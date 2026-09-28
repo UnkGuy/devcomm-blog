@@ -32,7 +32,7 @@ code, pre, .font-mono {
   font-family: var(--font-mono), monospace;
 }
 
-/* Layer 1: Dark Obsidian & Gold UI Frame (System Controls) */
+/* Layer 1: Dark Obsidian & Gold UI Frame */
 .bg3-panel {
   background-color: #14100d;
   border: 1px solid var(--gold-bronze);
@@ -70,6 +70,14 @@ code, pre, .font-mono {
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* Circular Mask to trim black corners off the 5 wax seal images */
+.wax-seal-stamp {
+  border-radius: 9999px;
+  -webkit-mask-image: radial-gradient(circle, black 60%, transparent 66%);
+  mask-image: radial-gradient(circle, black 60%, transparent 66%);
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
 }
 
 /* Fantasy Reliquary Frame for Embedded Images & Videos */
@@ -115,6 +123,12 @@ code, pre, .font-mono {
   line-height: 1.75;
   font-size: 1.125rem;
   overflow-wrap: anywhere;
+}
+
+.lore-content a {
+  color: #7c2d12;
+  text-decoration: underline;
+  font-weight: 600;
 }
 
 .lore-content blockquote {
