@@ -35,7 +35,6 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
     if (profile?.role) currentUserRole = profile.role;
   }
 
-  // 1. Fetch the Single Post
   const { data: rawPost } = await supabase
     .from('posts')
     .select(
@@ -68,7 +67,6 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
 
   const post = rawPost as unknown as PostWithDetails;
 
-  // 2. Fetch Comments for this Post
   const { data: rawComments } = await supabase
     .from('comments')
     .select(
@@ -100,8 +98,10 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
     user && (user.id === post.author_id || currentUserRole === 'admin')
   );
 
-  // Strip any raw script tags before parsing Markdown on the server
-  const safeMarkdown = post.description.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  const safeMarkdown = post.description.replace(
+    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+    ''
+  );
   const htmlContent = marked.parse(safeMarkdown, { async: false }) as string;
 
   async function handleDeletePost() {
@@ -131,9 +131,8 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
         )}
       </div>
 
-      {/* Main Unfurled Parchment Scroll (Requirement #3: View Single Post) */}
-      <article className="parchment-scroll p-6 sm:p-12">
-        {/* Tags */}
+      {/* Main Unfurled Parchment Scroll */}
+      <article className="parchment-scroll p-6 sm:p-12 overflow-hidden">
         <div className="flex justify-center flex-wrap gap-1.5 mb-4">
           {tags.length > 0 ? (
             tags.map((tag) => (
@@ -146,13 +145,11 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
           )}
         </div>
 
-        {/* Title */}
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-[#1a0f05] text-center leading-tight">
+        <h1 className="font-display text-3xl sm:text-4xl font-bold text-[#1a0f05] text-center leading-tight [overflow-wrap:anywhere]">
           {post.title}
         </h1>
 
-        {/* Metadata */}
-        <div className="mt-3 flex items-center justify-center gap-4 text-xs sm:text-sm text-[#4a3319]">
+        <div className="mt-3 flex items-center justify-center gap-4 text-xs sm:text-sm text-[#4a3319] flex-wrap">
           <span className="inline-flex items-center gap-1.5 font-semibold">
             <User className="w-4 h-4" />
             <span>Inscribed by {post.profiles?.username || 'Unknown Scribe'}</span>
@@ -164,16 +161,15 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
           </span>
         </div>
 
-        <GoldDivider />
+        {/* Uses parchment-divider.png */}
+        <GoldDivider variant="parchment" />
 
-        {/* Markdown Body with D&D Drop Cap */}
         <div
-          className="lore-content mt-6 text-[#23170b] first-letter:font-display first-letter:text-5xl first-letter:font-bold first-letter:float-left first-letter:mr-3 first-letter:leading-none first-letter:text-[#7c2d12]"
+          className="lore-content mt-6 text-[#23170b] [overflow-wrap:anywhere] first-letter:font-display first-letter:text-5xl first-letter:font-bold first-letter:float-left first-letter:mr-3 first-letter:leading-none first-letter:text-[#7c2d12]"
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
 
-        {/* Scroll Footer: Like Button & Wax Seal */}
-        <div className="mt-10 pt-5 border-t border-[#8c6a3d]/50 flex items-center justify-between">
+        <div className="mt-10 pt-5 border-t border-[#8c6a3d]/50 flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <LikeButton
               postId={post.id}
@@ -195,7 +191,6 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
         </div>
       </article>
 
-      {/* Separate Comment Cards Section (Requirements #4 & #5) */}
       <CommentSection
         postId={post.id}
         postSlug={post.slug}

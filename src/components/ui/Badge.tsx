@@ -18,7 +18,7 @@ export function Badge({ children, variant = 'tag', className }: BadgeProps) {
   return (
     <span
       className={cn(
-        'font-display inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider border',
+        'font-display inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider border max-w-full break-all',
         styles[variant],
         className
       )}
@@ -28,7 +28,25 @@ export function Badge({ children, variant = 'tag', className }: BadgeProps) {
   );
 }
 
-export function GoldDivider({ className }: { className?: string }) {
+export function GoldDivider({
+  variant = 'gold',
+  className,
+}: {
+  variant?: 'gold' | 'parchment';
+  className?: string;
+}) {
+  if (variant === 'parchment') {
+    return (
+      <div className={cn('flex justify-center items-center my-4', className)}>
+        <img
+          src="/assets/images/parchment-divider.png"
+          alt="Parchment Spellbook Divider"
+          className="w-64 sm:w-80 h-16 object-contain object-center mix-blend-multiply opacity-85 select-none pointer-events-none"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={cn('flex justify-center items-center my-3', className)}>
       <img

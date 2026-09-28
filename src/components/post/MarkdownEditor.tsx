@@ -22,16 +22,32 @@ export function MarkdownEditor() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const allSplitTags = useMemo(() => {
-    return tagsInput
+  // Deduplicate tags case-insensitively so preview & chips only show unique tags
+  const { uniqueTags, hasDuplicates } = useMemo(() => {
+    const rawList = tagsInput
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
-  }, [tagsInput]);
 
-  const parsedTags = useMemo(() => {
-    return allSplitTags.slice(0, MAX_TAGS);
-  }, [allSplitTags]);
+    const seen = new Set<string>();
+    const deduped: string[] = [];
+    let duplicateFound = false;
+
+    for (const tag of rawList) {
+      const lower = tag.toLowerCase();
+      if (seen.has(lower)) {
+        duplicateFound = true;
+      } else {
+        seen.add(lower);
+        deduped.push(tag);
+      }
+    }
+
+    return {
+      uniqueTags: deduped.slice(0, MAX_TAGS),
+      hasDuplicates: duplicateFound,
+    };
+  }, [tagsInput]);
 
   const wordCount = useMemo(() => {
     const trimmed = description.trim();
@@ -42,13 +58,7 @@ export function MarkdownEditor() {
   function handleTagsChange(e: React.ChangeEvent<HTMLInputElement>) {
     const rawValue = e.target.value;
     const segments = rawValue.split(',');
-
-    // Block typing a 6th tag when 5 non-empty tags already exist
-    const nonEmptyCount = segments.map((s) => s.trim()).filter(Boolean).length;
-    if (segments.length > MAX_TAGS && nonEmptyCount > MAX_TAGS) {
-      setTagWarning(`Maximum of ${MAX_TAGS} tags allowed per scroll.`);
-      return;
-    }
+    const nonEmptySegments = segments.map((s) => s.trim()).filter(Boolean);
 
     // Check if any individual tag exceeds MAX_SINGLE_TAG_LENGTH
     const tooLongTag = segments.find((s) => s.trim().length > MAX_SINGLE_TAG_LENGTH);
@@ -57,8 +67,15 @@ export function MarkdownEditor() {
       return;
     }
 
-    if (nonEmptyCount === MAX_TAGS && rawValue.endsWith(',')) {
-      setTagWarning(`You have reached the maximum of ${MAX_TAGS} tags.`);
+    // Check unique count limit
+    const uniqueSet = new Set(nonEmptySegments.map((s) => s.toLowerCase()));
+    if (uniqueSet.size > MAX_TAGS) {
+      setTagWarning(`Maximum of ${MAX_TAGS} unique tags allowed per scroll.`);
+      return;
+    }
+
+    if (uniqueSet.size === MAX_TAGS && rawValue.endsWith(',')) {
+      setTagWarning(`You have reached the maximum of ${MAX_TAGS} unique tags.`);
       return;
     }
 
@@ -67,7 +84,7 @@ export function MarkdownEditor() {
   }
 
   function removeTagAtIndex(indexToRemove: number) {
-    const remaining = parsedTags.filter((_, idx) => idx !== indexToRemove);
+    const remaining = uniqueTags.filter((_, idx) => idx !== indexToRemove);
     setTagsInput(remaining.join(', '));
     setTagWarning(null);
   }
@@ -87,8 +104,8 @@ export function MarkdownEditor() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    // Ensure clean validated tags are submitted
-    formData.set('tags', parsedTags.join(', '));
+    // Submit only the deduplicated tags
+    formData.set('tags', uniqueTags.join(', '));
 
     const result = await createPostAction(formData);
 
@@ -100,7 +117,7 @@ export function MarkdownEditor() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-      {/* LEFT COLUMN: Dark Obsidian Scribe Controls (No Wax Seal Here) */}
+      {/* LEFT COLUMN: Dark Obsidian Scribe Controls */}
       <form onSubmit={handleSubmit} className="bg3-panel p-6 sm:p-8 space-y-5">
         <div className="border-b border-[#6e552f]/60 pb-4">
           <h2 className="font-display text-xl font-bold text-[#e8cf96] flex items-center gap-2">
@@ -142,13 +159,13 @@ export function MarkdownEditor() {
           />
           {title.length >= MAX_TITLE_LENGTH && (
             <p className="text-xs text-[#f87171] flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5" />
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               <span>Maximum title length of {MAX_TITLE_LENGTH} characters reached.</span>
             </p>
           )}
         </div>
 
-        {/* 2. Realm Tags with 5-Tag Limit Counter & Feedback */}
+        {/* 2. Realm Tags with Deduplication & 5-Tag Limit Counter */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="block font-display text-xs uppercase tracking-widest font-semibold text-[#c8aa6e]">
@@ -156,20 +173,20 @@ export function MarkdownEditor() {
             </label>
             <span
               className={`font-mono text-xs ${
-                parsedTags.length >= MAX_TAGS
+                uniqueTags.length >= MAX_TAGS
                   ? 'text-[#e8cf96] font-bold'
                   : 'text-[#8c7b65]'
               }`}
             >
-              {parsedTags.length} / {MAX_TAGS} tags
+              {uniqueTags.length} / {MAX_TAGS} unique tags
             </span>
           </div>
           <input
             name="tags"
             type="text"
             placeholder={
-              parsedTags.length >= MAX_TAGS
-                ? 'Maximum of 5 tags reached'
+              uniqueTags.length >= MAX_TAGS
+                ? 'Maximum of 5 unique tags reached'
                 : 'e.g. Arcana, Quest Log, Tavern Tales (separate with commas)'
             }
             value={tagsInput}
@@ -177,13 +194,13 @@ export function MarkdownEditor() {
             className="w-full px-3.5 py-2 bg-[#0b0908] border border-[#6e552f] text-base text-[#f3e5c8] placeholder:text-[#786852] focus:outline-none focus:border-[#c8aa6e]"
           />
 
-          {/* Interactive Tag Chips Preview & Feedback */}
+          {/* Interactive Deduplicated Tag Chips */}
           <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              {parsedTags.map((tag, idx) => (
+              {uniqueTags.map((tag, idx) => (
                 <span
                   key={idx}
-                  className="font-display inline-flex items-center gap-1 px-2 py-0.5 text-[11px] uppercase tracking-wider bg-[#2c2012] text-[#e8cf96] border border-[#c8aa6e]"
+                  className="font-display inline-flex items-center gap-1 px-2 py-0.5 text-[11px] uppercase tracking-wider bg-[#2c2012] text-[#e8cf96] border border-[#c8aa6e] break-all"
                 >
                   <span>#{tag}</span>
                   <button
@@ -198,12 +215,19 @@ export function MarkdownEditor() {
               ))}
             </div>
             <span className="text-[11px] text-[#8c7b65]">
-              Up to {MAX_TAGS} tags &bull; Max {MAX_SINGLE_TAG_LENGTH} chars each
+              Up to {MAX_TAGS} unique tags &bull; Max {MAX_SINGLE_TAG_LENGTH} chars each
             </span>
           </div>
 
-          {tagWarning && (
+          {hasDuplicates && (
             <p className="text-xs text-[#f59e0b] flex items-center gap-1 pt-0.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>Duplicate tag detected — identical tags are merged into one on your scroll.</span>
+            </p>
+          )}
+
+          {tagWarning && (
+            <p className="text-xs text-[#f87171] flex items-center gap-1 pt-0.5">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               <span>{tagWarning}</span>
             </p>
@@ -257,17 +281,17 @@ export function MarkdownEditor() {
         </div>
       </form>
 
-      {/* RIGHT COLUMN: Live Unfurled Parchment Preview (Keeps Wax Seal) */}
-      <div className="parchment-scroll p-6 sm:p-8 min-h-[520px] flex flex-col justify-between">
-        <div>
-          <div className="flex items-center justify-between border-b border-[#8c6a3d]/50 pb-3 mb-4">
-            <span className="font-display text-xs uppercase tracking-widest text-[#5a4228] flex items-center gap-1.5 font-semibold">
+      {/* RIGHT COLUMN: Live Unfurled Parchment Preview */}
+      <div className="parchment-scroll p-6 sm:p-8 min-h-[520px] flex flex-col justify-between overflow-hidden">
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-2 border-b border-[#8c6a3d]/50 pb-3 mb-4 flex-wrap">
+            <span className="font-display text-xs uppercase tracking-widest text-[#5a4228] flex items-center gap-1.5 font-semibold shrink-0">
               <Eye className="w-4 h-4" />
               <span>Live Parchment Preview</span>
             </span>
-            <div className="flex gap-1.5 flex-wrap">
-              {parsedTags.length > 0 ? (
-                parsedTags.map((tag, i) => (
+            <div className="flex gap-1.5 flex-wrap justify-end">
+              {uniqueTags.length > 0 ? (
+                uniqueTags.map((tag, i) => (
                   <Badge key={i} variant="tag">
                     {tag}
                   </Badge>
@@ -278,15 +302,16 @@ export function MarkdownEditor() {
             </div>
           </div>
 
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#1a0f05] text-center break-words">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#1a0f05] text-center [overflow-wrap:anywhere]">
             {title.trim() || 'Untitled Chronicle'}
           </h1>
 
-          <GoldDivider />
+          {/* Uses parchment-divider.png */}
+          <GoldDivider variant="parchment" />
 
           {renderedHtml ? (
             <div
-              className="lore-content mt-4 text-[#23170b] break-words"
+              className="lore-content mt-4 text-[#23170b] [overflow-wrap:anywhere]"
               dangerouslySetInnerHTML={{ __html: renderedHtml }}
             />
           ) : (

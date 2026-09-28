@@ -24,6 +24,8 @@ body {
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-cinzel), serif;
   letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 code, pre, .font-mono {
@@ -35,6 +37,7 @@ code, pre, .font-mono {
   background-color: #14100d;
   border: 1px solid var(--gold-bronze);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+  min-width: 0;
 }
 
 /* Layer 2: Parchment Content Surface (Posts & Reader) */
@@ -48,9 +51,19 @@ code, pre, .font-mono {
   box-shadow:
     inset 0 0 32px rgba(35, 20, 6, 0.45),
     0 8px 24px rgba(0, 0, 0, 0.6);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Markdown Reader Typography */
+.lore-content {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .lore-content h1,
 .lore-content h2,
 .lore-content h3 {
@@ -59,12 +72,14 @@ code, pre, .font-mono {
   font-weight: 700;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
 }
 
 .lore-content p {
   margin-bottom: 1rem;
   line-height: 1.75;
   font-size: 1.125rem;
+  overflow-wrap: anywhere;
 }
 
 .lore-content blockquote {
@@ -72,6 +87,7 @@ code, pre, .font-mono {
   padding-left: 1rem;
   font-style: italic;
   margin: 1rem 0;
+  overflow-wrap: anywhere;
 }
 
 .lore-content pre {
@@ -80,5 +96,6 @@ code, pre, .font-mono {
   padding: 0.85rem;
   border: 1px solid var(--gold-bronze);
   overflow-x: auto;
+  max-width: 100%;
   margin: 1rem 0;
 }
