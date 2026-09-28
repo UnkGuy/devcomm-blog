@@ -5,10 +5,6 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/lib/utils';
 
-// ==========================================
-// AUTHENTICATION & CUSTOM AUDIT LOGGING
-// ==========================================
-
 export async function signInAction(formData: FormData) {
   const email = (formData.get('email') as string)?.trim();
   const password = formData.get('password') as string;
@@ -50,13 +46,12 @@ export async function signUpAction(formData: FormData) {
     return { error: 'All fields are required.' };
   }
 
-  if (username.length < 3) {
-    return { error: 'Username must be at least 3 characters.' };
+  if (username.length < 3 || username.length > 24) {
+    return { error: 'Username must be between 3 and 24 characters.' };
   }
 
   const supabase = await createClient();
 
-  // Check if username is already taken
   const { data: existingUser } = await supabase
     .from('profiles')
     .select('id')
@@ -116,9 +111,52 @@ export async function signOutAction() {
   redirect('/login');
 }
 
-// ==========================================
-// POST ACTIONS (CREATE, DELETE, LIKE)
-// ==========================================
+export async function updateProfileAction(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'You must be signed in to update your profile.' };
+  }
+
+  const username = (formData.get('username') as string)?.trim();
+  const bio = (formData.get('bio') as string)?.trim() || null;
+  const avatarUrl = (formData.get('avatar_url') as string)?.trim() || null;
+
+  if (!username || username.length < 3 || username.length > 24) {
+    return { error: 'Adventurer name must be between 3 and 24 characters.' };
+  }
+
+  // Check if another user already has this username
+  const { data: conflict } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .neq('id', user.id)
+    .maybeSingle();
+
+  if (conflict) {
+    return { error: 'That Adventurer name is already claimed.' };
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      username,
+      bio,
+      avatar_url: avatarUrl,
+    })
+    .eq('id', user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath('/', 'layout');
+  return { success: true };
+}
 
 export async function createPostAction(formData: FormData) {
   const supabase = await createClient();
@@ -141,7 +179,6 @@ export async function createPostAction(formData: FormData) {
 
   const slug = slugify(title);
 
-  // 1. Insert the Post (DB trigger automatically logs this INSERT in audit_logs)
   const { data: post, error: postError } = await supabase
     .from('posts')
     .insert({
@@ -159,7 +196,6 @@ export async function createPostAction(formData: FormData) {
     return { error: postError?.message || 'Failed to create post.' };
   }
 
-  // 2. Process Optional Tags (M:N relationship via tags & post_tags)
   const tagNames = rawTags
     .split(',')
     .map((t) => t.trim().toLowerCase())
@@ -170,7 +206,6 @@ export async function createPostAction(formData: FormData) {
     const tagSlug = tagName.replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
     if (!tagSlug) continue;
 
-    // Upsert or fetch existing tag
     let tagId: string | null = null;
     const { data: existingTag } = await supabase
       .from('tags')
