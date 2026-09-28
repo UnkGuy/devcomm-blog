@@ -252,7 +252,7 @@ export function ProfileModal({
                         setAvatarUrl(e.target.value.trim());
                       }
                     }}
-                    placeholder="[https://example.com/my-portrait.jpg](https://example.com/my-portrait.jpg)"
+                    placeholder="https://example.com/my-portrait.jpg"
                     className="w-full px-3 py-1.5 bg-[#0b0908] border border-[#6e552f] text-sm text-[#f3e5c8] placeholder:text-[#786852] focus:outline-none focus:border-[#c8aa6e]"
                   />
                 </div>
