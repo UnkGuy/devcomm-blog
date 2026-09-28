@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-import { Feather, Eye, Sparkles, AlertCircle, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Feather, Sparkles, AlertCircle, X } from 'lucide-react';
 import { createPostAction } from '@/lib/actions/post.actions';
+import { normalizeUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
-import { Badge, GoldDivider, WaxSeal } from '@/components/ui/Badge';
 import { Toast } from '@/components/ui/Toast';
+import { MediaAttachmentInput } from './MediaAttachmentInput';
+import { ScrollPreview } from './ScrollPreview';
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_DESC_LENGTH = 5000;
@@ -15,9 +16,12 @@ const MAX_TAGS = 5;
 const MAX_SINGLE_TAG_LENGTH = 24;
 
 export function MarkdownEditor() {
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [coverMediaUrl, setCoverMediaUrl] = useState('');
   const [description, setDescription] = useState('');
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [tagWarning, setTagWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,14 +64,16 @@ export function MarkdownEditor() {
     const segments = rawValue.split(',');
     const nonEmptySegments = segments.map((s) => s.trim()).filter(Boolean);
 
-    // Check if any individual tag exceeds MAX_SINGLE_TAG_LENGTH
-    const tooLongTag = segments.find((s) => s.trim().length > MAX_SINGLE_TAG_LENGTH);
+    const tooLongTag = segments.find(
+      (s) => s.trim().length > MAX_SINGLE_TAG_LENGTH
+    );
     if (tooLongTag) {
-      setTagWarning(`Each tag cannot exceed ${MAX_SINGLE_TAG_LENGTH} characters.`);
+      setTagWarning(
+        `Each tag cannot exceed ${MAX_SINGLE_TAG_LENGTH} characters.`
+      );
       return;
     }
 
-    // Check unique count limit
     const uniqueSet = new Set(nonEmptySegments.map((s) => s.toLowerCase()));
     if (uniqueSet.size > MAX_TAGS) {
       setTagWarning(`Maximum of ${MAX_TAGS} unique tags allowed per scroll.`);
@@ -89,14 +95,29 @@ export function MarkdownEditor() {
     setTagWarning(null);
   }
 
-  const renderedHtml = useMemo(() => {
-    if (!description.trim()) return '';
-    const rawHtml = marked.parse(description, { async: false }) as string;
-    if (typeof window !== 'undefined') {
-      return DOMPurify.sanitize(rawHtml);
+  // If the user highlights text and pastes a URL, wrap it as [Selected Text](url)
+  function handleDescriptionPaste(
+    e: React.ClipboardEvent<HTMLTextAreaElement>
+  ) {
+    const pasted = e.clipboardData.getData('text/plain').trim();
+    if (!/^(https?:\/\/|www\.)\S+$/i.test(pasted)) return;
+
+    const el = e.currentTarget;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selectedText = description.slice(start, end).trim();
+
+    if (selectedText && !/^(https?:\/\/|www\.)/i.test(selectedText)) {
+      e.preventDefault();
+      const formattedLink = `[${selectedText}](${normalizeUrl(pasted)})`;
+      const updated = (
+        description.slice(0, start) +
+        formattedLink +
+        description.slice(end)
+      ).slice(0, MAX_DESC_LENGTH);
+      setDescription(updated);
     }
-    return rawHtml;
-  }, [description]);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -104,14 +125,20 @@ export function MarkdownEditor() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    // Submit only the deduplicated tags
     formData.set('tags', uniqueTags.join(', '));
+    formData.set('cover_image_url', coverMediaUrl.trim());
 
     const result = await createPostAction(formData);
 
     if (result?.error) {
       setError(result.error);
       setLoading(false);
+      return;
+    }
+
+    if (result?.slug) {
+      router.push(`/post/${result.slug}`);
+      router.refresh();
     }
   }
 
@@ -125,11 +152,11 @@ export function MarkdownEditor() {
             <span>Scribe&apos;s Inkwell</span>
           </h2>
           <p className="text-xs text-[#9e8f77] mt-0.5">
-            Supports Markdown formatting (**bold**, *italics*, ## headings, &gt; quotes)
+            Supports Markdown (**bold**, *italics*, ## headings), image uploads, and automatic link detection
           </p>
         </div>
 
-        {/* 1. Scroll Title with Live Character Limit */}
+        {/* 1. Scroll Title */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="block font-display text-xs uppercase tracking-widest font-semibold text-[#c8aa6e]">
@@ -165,7 +192,7 @@ export function MarkdownEditor() {
           )}
         </div>
 
-        {/* 2. Realm Tags with Deduplication & 5-Tag Limit Counter */}
+        {/* 2. Realm Tags */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="block font-display text-xs uppercase tracking-widest font-semibold text-[#c8aa6e]">
@@ -194,7 +221,6 @@ export function MarkdownEditor() {
             className="w-full px-3.5 py-2 bg-[#0b0908] border border-[#6e552f] text-base text-[#f3e5c8] placeholder:text-[#786852] focus:outline-none focus:border-[#c8aa6e]"
           />
 
-          {/* Interactive Deduplicated Tag Chips */}
           <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               {uniqueTags.map((tag, idx) => (
@@ -234,7 +260,15 @@ export function MarkdownEditor() {
           )}
         </div>
 
-        {/* 3. Scroll Description with Live Character & Word Counter */}
+        {/* 3. Modular Media Uploader & Smart URL Input */}
+        <MediaAttachmentInput
+          value={coverMediaUrl}
+          onChange={setCoverMediaUrl}
+          onError={setError}
+          onUploadingChange={setUploadingMedia}
+        />
+
+        {/* 4. Scroll Description with Auto-Linking & Smart Paste */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="block font-display text-xs uppercase tracking-widest font-semibold text-[#c8aa6e]">
@@ -254,11 +288,12 @@ export function MarkdownEditor() {
           </div>
           <textarea
             name="description"
-            rows={12}
+            rows={11}
             maxLength={MAX_DESC_LENGTH}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Inscribe your tale here... Use ## for section headers or > for lore quotes."
+            onPaste={handleDescriptionPaste}
+            placeholder="Inscribe your tale here... Paste any link (https://... or www....) and it will automatically format itself!"
             required
             className="w-full px-3.5 py-3 bg-[#0b0908] border border-[#6e552f] text-[#f3e5c8] placeholder:text-[#786852] focus:outline-none focus:border-[#c8aa6e] leading-relaxed resize-y"
           />
@@ -274,60 +309,26 @@ export function MarkdownEditor() {
         </div>
 
         <div className="pt-2 flex justify-end">
-          <Button type="submit" variant="gold" size="lg" disabled={loading} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            variant="gold"
+            size="lg"
+            disabled={loading || uploadingMedia}
+            className="w-full sm:w-auto"
+          >
             <Sparkles className="w-4 h-4" />
             <span>{loading ? 'Sealing Scroll...' : 'Seal & Publish Scroll'}</span>
           </Button>
         </div>
       </form>
 
-      {/* RIGHT COLUMN: Live Unfurled Parchment Preview */}
-      <div className="parchment-scroll p-6 sm:p-8 min-h-[520px] flex flex-col justify-between overflow-hidden">
-        <div className="min-w-0">
-          <div className="flex items-center justify-between gap-2 border-b border-[#8c6a3d]/50 pb-3 mb-4 flex-wrap">
-            <span className="font-display text-xs uppercase tracking-widest text-[#5a4228] flex items-center gap-1.5 font-semibold shrink-0">
-              <Eye className="w-4 h-4" />
-              <span>Live Parchment Preview</span>
-            </span>
-            <div className="flex gap-1.5 flex-wrap justify-end">
-              {uniqueTags.length > 0 ? (
-                uniqueTags.map((tag, i) => (
-                  <Badge key={i} variant="tag">
-                    {tag}
-                  </Badge>
-                ))
-              ) : (
-                <Badge variant="tag">General Lore</Badge>
-              )}
-            </div>
-          </div>
-
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#1a0f05] text-center [overflow-wrap:anywhere]">
-            {title.trim() || 'Untitled Chronicle'}
-          </h1>
-
-          {/* Uses parchment-divider.png */}
-          <GoldDivider variant="parchment" />
-
-          {renderedHtml ? (
-            <div
-              className="lore-content mt-4 text-[#23170b] [overflow-wrap:anywhere]"
-              dangerouslySetInnerHTML={{ __html: renderedHtml }}
-            />
-          ) : (
-            <p className="text-center italic text-[#5a4228] my-16">
-              As you dip your quill on the left, your inscribed parchment will unfurl here...
-            </p>
-          )}
-        </div>
-
-        <div className="mt-8 pt-4 border-t border-[#8c6a3d]/40 flex items-center justify-between text-xs text-[#5a4228]">
-          <span className="font-display uppercase tracking-wider">
-            Sealed by the Chronicler&apos;s Archive
-          </span>
-          <WaxSeal size={34} />
-        </div>
-      </div>
+      {/* RIGHT COLUMN: Modular Live Parchment Preview */}
+      <ScrollPreview
+        title={title}
+        uniqueTags={uniqueTags}
+        coverMediaUrl={coverMediaUrl}
+        description={description}
+      />
 
       <Toast message={error} type="error" onClose={() => setError(null)} />
     </div>
