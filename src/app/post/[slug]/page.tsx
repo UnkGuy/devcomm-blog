@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { marked } from 'marked';
-import { ArrowLeft, Calendar, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Trash2, ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { deletePostAction } from '@/lib/actions/post.actions';
 import type { PostWithDetails, CommentWithAuthor } from '@/types/database.types';
@@ -9,6 +9,7 @@ import {
   formatRelativeDate,
   getParchmentClass,
   parseMediaUrl,
+  formatMarkdownWithAutoLinks,
   DND_AVATAR_PRESETS,
 } from '@/lib/utils';
 import { Badge, GoldDivider, WaxSeal } from '@/components/ui/Badge';
@@ -107,11 +108,17 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
   const media = parseMediaUrl(post.cover_image_url);
   const authorAvatar = post.profiles?.avatar_url || DND_AVATAR_PRESETS[0].url;
 
-  const safeMarkdown = post.description.replace(
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    ''
+  const safeMarkdown = formatMarkdownWithAutoLinks(
+    post.description.replace(
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      ''
+    )
   );
-  const htmlContent = marked.parse(safeMarkdown, { async: false }) as string;
+  const htmlContent = marked.parse(safeMarkdown, {
+    async: false,
+    gfm: true,
+    breaks: true,
+  }) as string;
 
   async function handleDeletePost() {
     'use server';
@@ -121,25 +128,22 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <Link
-          href="/"
-          className="font-display text-xs uppercase tracking-wider text-[#c8aa6e] hover:text-[#f3e5c8] inline-flex items-center gap-1.5"
-        >
-          <ArrowLeft className="w-4 h-4" />
+        <Link className="font-display text-xs uppercase tracking-wider text-[#c8aa6e] hover:text-[#f3e5c8] inline-flex items-center gap-1.5" href="/">
+          <ArrowLeft className="w-4 h-4"/>
           <span>Return to Noticeboard</span>
         </Link>
 
         {canDeletePost && (
           <form action={handleDeletePost}>
-            <Button type="submit" variant="crimson" size="sm">
-              <Trash2 className="w-3.5 h-3.5" />
+            <Button size="sm" type="submit" variant="crimson">
+              <Trash2 className="w-3.5 h-3.5"/>
               <span>Burn Scroll (Delete Post)</span>
             </Button>
           </form>
         )}
       </div>
 
-      {/* Main Unfurled Parchment Scroll (Matches Noticeboard Parchment Variant) */}
+      {/* Main Unfurled Parchment Scroll */}
       <article className={`${parchmentClass} p-6 sm:p-12 overflow-hidden`}>
         <div className="flex justify-center flex-wrap gap-1.5 mb-4">
           {tags.length > 0 ? (
@@ -168,39 +172,63 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
           </span>
           <span>&bull;</span>
           <span className="inline-flex items-center gap-1.5">
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-4 h-4"/>
             <span>{formatRelativeDate(post.created_at)}</span>
           </span>
         </div>
 
-        <GoldDivider variant="parchment" />
+        <GoldDivider variant="parchment"/>
 
-        {/* Framed Image or Scrying Vision (Video) */}
+        {/* Framed Image, Scrying Vision (Video), or External Portal Link */}
         {media.type !== 'none' && media.embedUrl && (
-          <div className="my-6 fantasy-media-frame">
+          <div className="my-6">
             {media.type === 'image' && (
-              <img
-                src={media.embedUrl}
-                alt={post.title}
-                className="w-full max-h-[460px] object-cover fantasy-media-img"
-              />
-            )}
-            {media.type === 'youtube' && (
-              <div className="aspect-video w-full">
-                <iframe
+              <div className="fantasy-media-frame">
+                <img
                   src={media.embedUrl}
-                  className="w-full h-full"
-                  allowFullScreen
-                  title={post.title}
+                  alt={post.title}
+                  className="w-full max-h-[460px] object-cover fantasy-media-img"
                 />
               </div>
             )}
+            {media.type === 'youtube' && (
+              <div className="fantasy-media-frame">
+                <div className="aspect-video w-full">
+                  <iframe
+                    src={media.embedUrl}
+                    className="w-full h-full"
+                    allowFullScreen
+                    title={post.title}
+                  />
+                </div>
+              </div>
+            )}
             {media.type === 'video' && (
-              <video
-                src={media.embedUrl}
-                controls
-                className="w-full max-h-[460px] bg-black"
-              />
+              <div className="fantasy-media-frame">
+                <video
+                  src={media.embedUrl}
+                  controls
+                  className="w-full max-h-[460px] bg-black"
+                />
+              </div>
+            )}
+            {media.type === 'link' && (
+              <a
+                href={media.embedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-4 bg-[#23170b]/10 border border-[#8c6a3d] hover:bg-[#23170b]/20 transition-colors"
+              >
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <span className="font-display text-xs uppercase tracking-wider text-[#7c2d12] font-bold inline-flex items-center gap-1.5">
+                    <ExternalLink className="w-4 h-4 shrink-0"/>
+                    <span>Referenced Chronicle ({media.hostname})</span>
+                  </span>
+                  <span className="text-xs text-[#4a3319] underline break-all">
+                    {media.embedUrl}
+                  </span>
+                </div>
+              </a>
             )}
           </div>
         )}
@@ -213,10 +241,10 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
         <div className="mt-10 pt-5 border-t border-[#8c6a3d]/50 flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <LikeButton
-              postId={post.id}
-              initialLikesCount={likesCount}
-              initialIsLiked={isLiked}
               currentPath={`/post/${post.slug}`}
+              initialIsLiked={isLiked}
+              initialLikesCount={likesCount}
+              postId={post.id}
             />
             <span className="text-xs text-[#4a3319] italic">
               Grant Inspiration to commend this scribe
@@ -227,18 +255,18 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
             <span className="font-display text-[11px] uppercase tracking-widest text-[#4a3319] hidden sm:inline">
               Official Guild Seal
             </span>
-            <WaxSeal size={44} />
+            <WaxSeal seed={post.id} size={44} />
           </div>
         </div>
       </article>
 
       <CommentSection
-        postId={post.id}
-        postSlug={post.slug}
-        postAuthorId={post.author_id}
-        initialComments={comments}
         currentUserId={user?.id}
         currentUserRole={currentUserRole}
+        initialComments={comments}
+        postAuthorId={post.author_id}
+        postId={post.id}
+        postSlug={post.slug}
       />
     </div>
   );
