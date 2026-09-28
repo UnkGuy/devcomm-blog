@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useMemo, useTransition } from 'react';
 import Link from 'next/link';
 import { MessageSquare, LogIn } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { deleteCommentAction } from '@/lib/actions/comment.actions';
 import type { CommentWithAuthor } from '@/types/database.types';
 import { CommentForm } from './CommentForm';
-import { CommentItem } from './CommentItem';
+import { CommentItem, type CommentTreeNode } from './CommentItem';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
 
@@ -33,7 +33,36 @@ export function CommentSection({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  // Supabase Realtime Subscription for instant live comments/deletions
+  // Build hierarchical comment tree from flat comments array
+  const commentTree = useMemo(() => {
+    const map = new Map<string, CommentTreeNode>();
+
+    for (const c of comments) {
+      map.set(c.id, {
+        ...c,
+        replies: [],
+        parentAuthorUsername: null,
+      });
+    }
+
+    const roots: CommentTreeNode[] = [];
+
+    for (const c of comments) {
+      const node = map.get(c.id)!;
+      if (c.parent_id && map.has(c.parent_id)) {
+        const parentNode = map.get(c.parent_id)!;
+        node.parentAuthorUsername =
+          parentNode.profiles?.username || 'Traveler';
+        parentNode.replies.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    return roots;
+  }, [comments]);
+
+  // Supabase Realtime Subscription for live comments & replies
   useEffect(() => {
     const supabase = createClient();
 
@@ -82,7 +111,9 @@ export function CommentSection({
         },
         (payload) => {
           const deletedId = payload.old.id as string;
-          setComments((prev) => prev.filter((c) => c.id !== deletedId));
+          setComments((prev) =>
+            prev.filter((c) => c.id !== deletedId && c.parent_id !== deletedId)
+          );
         }
       )
       .subscribe();
@@ -103,15 +134,26 @@ export function CommentSection({
     const previousComments = [...comments];
     setDeletingId(commentId);
 
-    // Optimistic UI: immediately remove the comment card from the screen
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    // Collect commentId and any nested descendant reply IDs
+    const toRemove = new Set<string>([commentId]);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const c of comments) {
+        if (c.parent_id && toRemove.has(c.parent_id) && !toRemove.has(c.id)) {
+          toRemove.add(c.id);
+          added = true;
+        }
+      }
+    }
+
+    setComments((prev) => prev.filter((c) => !toRemove.has(c.id)));
 
     startTransition(async () => {
       const result = await deleteCommentAction(commentId, postSlug);
       setDeletingId(null);
 
       if (result?.error) {
-        // Revert if server rejected deletion
         setComments(previousComments);
         setToastMessage(result.error);
       }
@@ -132,7 +174,6 @@ export function CommentSection({
         )}
       </div>
 
-      {/* Add Comment Box or Sign-In Prompt */}
       {currentUserId ? (
         <CommentForm
           postId={postId}
@@ -142,7 +183,7 @@ export function CommentSection({
       ) : (
         <div className="bg3-panel p-5 flex items-center justify-between gap-4">
           <p className="text-sm text-[#b8a68e]">
-            You must enter the archive to leave a comment on this scroll.
+            You must enter the archive to leave a whisper or reply on this scroll.
           </p>
           <Link href="/login">
             <Button variant="gold" size="sm">
@@ -153,18 +194,20 @@ export function CommentSection({
         </div>
       )}
 
-      {/* Separate Smaller Cards for Each Comment */}
-      {comments.length > 0 ? (
+      {commentTree.length > 0 ? (
         <div className="space-y-3">
-          {comments.map((comment) => (
+          {commentTree.map((rootComment) => (
             <CommentItem
-              key={comment.id}
-              comment={comment}
+              key={rootComment.id}
+              comment={rootComment}
+              postId={postId}
+              postSlug={postSlug}
               postAuthorId={postAuthorId}
               currentUserId={currentUserId}
               currentUserRole={currentUserRole}
               onDelete={handleDeleteComment}
-              isDeleting={deletingId === comment.id}
+              onReplyAdded={handleCommentAdded}
+              deletingId={deletingId}
             />
           ))}
         </div>

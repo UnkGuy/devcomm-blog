@@ -1,86 +1,217 @@
 'use client';
 
-import React from 'react';
-import { Trash2, Shield, Crown } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Trash2,
+  Shield,
+  Crown,
+  Reply,
+  CornerDownRight,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import type { CommentWithAuthor } from '@/types/database.types';
-import { formatRelativeDate, DND_AVATAR_PRESETS } from '@/lib/utils';
+import { formatRelativeDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { UserPopover } from '@/components/user/UserPopover';
+import { CommentForm } from './CommentForm';
+
+export interface CommentTreeNode extends CommentWithAuthor {
+  replies: CommentTreeNode[];
+  parentAuthorUsername?: string | null;
+}
 
 interface CommentItemProps {
-  comment: CommentWithAuthor;
+  comment: CommentTreeNode;
+  postId: string;
+  postSlug: string;
   postAuthorId: string;
   currentUserId?: string;
   currentUserRole?: 'user' | 'admin';
   onDelete: (commentId: string) => void;
-  isDeleting?: boolean;
+  onReplyAdded: (newComment: CommentWithAuthor) => void;
+  deletingId: string | null;
+  depth?: number;
 }
 
 export function CommentItem({
   comment,
+  postId,
+  postSlug,
   postAuthorId,
   currentUserId,
   currentUserRole,
   onDelete,
-  isDeleting,
+  onReplyAdded,
+  deletingId,
+  depth = 0,
 }: CommentItemProps) {
-  const isCommentAuthor = Boolean(currentUserId && currentUserId === comment.author_id);
+  const [isReplying, setIsReplying] = useState(false);
+  const [repliesCollapsed, setRepliesCollapsed] = useState(false);
+
+  const isCommentAuthor = Boolean(
+    currentUserId && currentUserId === comment.author_id
+  );
   const isPostOwner = Boolean(currentUserId && currentUserId === postAuthorId);
   const isAdmin = currentUserRole === 'admin';
 
   const canDelete = isCommentAuthor || isPostOwner || isAdmin;
   const isCommentByPostOwner = comment.author_id === postAuthorId;
-  const avatarUrl = comment.profiles?.avatar_url || DND_AVATAR_PRESETS[0].url;
+  const isDeleting = deletingId === comment.id;
 
   return (
-    <div className="bg3-panel p-4 sm:p-5 transition-opacity duration-200">
-      <div className="flex items-center justify-between gap-2 border-b border-[#6e552f]/40 pb-2.5 mb-3">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <img
-            src={avatarUrl}
-            alt={comment.profiles?.username || 'Traveler'}
-            className="w-7 h-7 rounded-full object-cover border border-[#c8aa6e]"
-          />
-          <span className="font-display text-sm font-bold text-[#e8cf96]">
-            {comment.profiles?.username || 'Traveler'}
-          </span>
+    <div className="space-y-2.5">
+      <div
+        className={`bg3-panel p-4 sm:p-5 transition-opacity duration-200 ${
+          depth > 0 ? 'bg-[#120e0b] border-[#6e552f]/80' : ''
+        }`}
+      >
+        {/* If this is a reply to another comment/reply, show @target indicator */}
+        {depth > 0 && comment.parentAuthorUsername && (
+          <div className="mb-2 flex items-center gap-1.5 text-xs text-[#c8aa6e] font-display uppercase tracking-wider">
+            <CornerDownRight className="w-3.5 h-3.5 shrink-0" />
+            <span>Replying to @{comment.parentAuthorUsername}</span>
+          </div>
+        )}
 
-          {comment.profiles?.role === 'admin' && (
-            <Badge variant="admin">
-              <Shield className="w-3 h-3" />
-              <span>Archivist</span>
-            </Badge>
-          )}
+        <div className="flex items-center justify-between gap-2 border-b border-[#6e552f]/40 pb-2.5 mb-3 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Clickable SpaceBattles-style Member Card Trigger */}
+            <UserPopover
+              userId={comment.author_id}
+              username={comment.profiles?.username || 'Traveler'}
+              avatarUrl={comment.profiles?.avatar_url}
+              role={comment.profiles?.role}
+              variant="dark"
+              avatarSize="md"
+            />
 
-          {isCommentByPostOwner && (
-            <Badge variant="author">
-              <Crown className="w-3 h-3" />
-              <span>Scroll Author</span>
-            </Badge>
-          )}
+            {comment.profiles?.role === 'admin' && (
+              <Badge variant="admin">
+                <Shield className="w-3 h-3" />
+                <span>Archivist</span>
+              </Badge>
+            )}
 
-          <span className="text-xs text-[#8c7b65]">
-            &bull; {formatRelativeDate(comment.created_at)}
-          </span>
+            {isCommentByPostOwner && (
+              <Badge variant="author">
+                <Crown className="w-3 h-3" />
+                <span>Scroll Author</span>
+              </Badge>
+            )}
+
+            <span className="text-xs text-[#8c7b65]">
+              &bull; {formatRelativeDate(comment.created_at)}
+            </span>
+          </div>
+
+          {/* Action Buttons: Reply & Delete */}
+          <div className="flex items-center gap-2">
+            {currentUserId && (
+              <button
+                type="button"
+                onClick={() => setIsReplying((prev) => !prev)}
+                className="font-display text-xs uppercase tracking-wider px-2.5 py-1 border border-[#6e552f] bg-[#1c1612] text-[#d4c3a3] hover:border-[#c8aa6e] hover:text-[#e8cf96] inline-flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Reply className="w-3 h-3 text-[#c8aa6e]" />
+                <span>Reply</span>
+              </button>
+            )}
+
+            {canDelete && (
+              <Button
+                type="button"
+                variant="crimson"
+                size="sm"
+                disabled={isDeleting}
+                onClick={() => onDelete(comment.id)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Removing...' : 'Delete'}</span>
+              </Button>
+            )}
+          </div>
         </div>
 
-        {canDelete && (
-          <Button
-            type="button"
-            variant="crimson"
-            size="sm"
-            disabled={isDeleting}
-            onClick={() => onDelete(comment.id)}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>{isDeleting ? 'Removing...' : 'Delete'}</span>
-          </Button>
+        <p className="text-base text-[#e8dcc4] whitespace-pre-line leading-relaxed [overflow-wrap:anywhere]">
+          {comment.content}
+        </p>
+
+        {/* Collapse/Expand toggle if this comment has replies */}
+        {comment.replies.length > 0 && (
+          <div className="mt-3 pt-2 border-t border-[#6e552f]/25 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setRepliesCollapsed((prev) => !prev)}
+              className="font-display text-[11px] uppercase tracking-wider text-[#c8aa6e] hover:text-[#f3e5c8] inline-flex items-center gap-1 cursor-pointer"
+            >
+              {repliesCollapsed ? (
+                <>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                  <span>
+                    Show {comment.replies.length}{' '}
+                    {comment.replies.length === 1 ? 'Reply' : 'Replies'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <ChevronUp className="w-3.5 h-3.5" />
+                  <span>
+                    Hide {comment.replies.length}{' '}
+                    {comment.replies.length === 1 ? 'Reply' : 'Replies'}
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
         )}
       </div>
 
-      <p className="text-base text-[#e8dcc4] whitespace-pre-line leading-relaxed [overflow-wrap:anywhere]">
-        {comment.content}
-      </p>
+      {/* Inline Reply Form */}
+      {isReplying && (
+        <div className={depth === 0 ? 'pl-4 sm:pl-7' : ''}>
+          <CommentForm
+            postId={postId}
+            postSlug={postSlug}
+            parentId={comment.id}
+            replyToUsername={comment.profiles?.username || 'Traveler'}
+            onCommentAdded={(newReply) => {
+              onReplyAdded(newReply);
+              setIsReplying(false);
+              setRepliesCollapsed(false);
+            }}
+            onCancel={() => setIsReplying(false)}
+          />
+        </div>
+      )}
+
+      {/* Nested Replies: Only indent at depth 0 -> 1 so deep reply chains NEVER squish the layout */}
+      {comment.replies.length > 0 && !repliesCollapsed && (
+        <div
+          className={
+            depth === 0
+              ? 'pl-4 sm:pl-7 border-l-2 border-[#6e552f]/60 space-y-2.5'
+              : 'space-y-2.5'
+          }
+        >
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              postId={postId}
+              postSlug={postSlug}
+              postAuthorId={postAuthorId}
+              currentUserId={currentUserId}
+              currentUserRole={currentUserRole}
+              onDelete={onDelete}
+              onReplyAdded={onReplyAdded}
+              deletingId={deletingId}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
