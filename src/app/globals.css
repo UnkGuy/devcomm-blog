@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --bg-obsidian: #0b0908;
+  --bg-panel: #14100d;
+  --gold-primary: #c8aa6e;
+  --gold-bronze: #6e552f;
+  --ink-dark: #23170b;
+  --parchment-light: #f3e5c8;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-obsidian);
+  background-image:
+    radial-gradient(ellipse at top, rgba(200, 170, 110, 0.07) 0%, rgba(11, 9, 8, 0.9) 75%),
+    url('/assets/images/dark-leather.jpg');
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, 400px 400px;
+  background-attachment: fixed;
+  color: var(--parchment-light);
+  font-family: var(--font-garamond), Georgia, serif;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-cinzel), serif;
+  letter-spacing: 0.04em;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono), monospace;
+}
+
+/* Layer 1: Dark Obsidian & Gold UI Frame (System Controls) */
+.bg3-panel {
+  background-color: #14100d;
+  border: 1px solid var(--gold-bronze);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+}
+
+/* Layer 2: Parchment Content Surface (Posts & Reader) */
+.parchment-scroll {
+  background-color: #e2cfa5;
+  background-image: url('/assets/images/parchment.jpg');
+  background-repeat: repeat;
+  background-size: 480px 480px;
+  color: var(--ink-dark);
+  border: 1px solid #8c6a3d;
+  box-shadow:
+    inset 0 0 32px rgba(35, 20, 6, 0.45),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* Markdown Reader Typography */
+.lore-content h1,
+.lore-content h2,
+.lore-content h3 {
+  font-family: var(--font-cinzel), serif;
+  color: #1a0f05;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.lore-content p {
+  margin-bottom: 1rem;
+  line-height: 1.75;
+  font-size: 1.125rem;
+}
+
+.lore-content blockquote {
+  border-left: 3px solid #7c2d12;
+  padding-left: 1rem;
+  font-style: italic;
+  margin: 1rem 0;
+}
+
+.lore-content pre {
+  background: #14100d;
+  color: #f3e5c8;
+  padding: 0.85rem;
+  border: 1px solid var(--gold-bronze);
+  overflow-x: auto;
+  margin: 1rem 0;
 }
