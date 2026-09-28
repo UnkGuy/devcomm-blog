@@ -210,7 +210,7 @@ export function formatMarkdownWithAutoLinks(markdown: string): string {
 
 // 8 Built-In D&D Class Crest Avatars (SVG Data URIs so they never break)
 function createClassSvg(label: string, symbol: string, bg: string, border: string) {
-  const svg = `<svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 100 100">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <rect width="100" height="100" rx="50" fill="${bg}"/>
     <circle cx="50" cy="50" r="45" fill="none" stroke="${border}" stroke-width="3"/>
     <circle cx="50" cy="50" r="39" fill="none" stroke="${border}" stroke-width="1" stroke-dasharray="3,3"/>
