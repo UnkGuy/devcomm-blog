@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { slugify } from '@/lib/utils';
+import { slugify, extractFirstMediaUrl, normalizeUrl } from '@/lib/utils';
 
 export async function signInAction(formData: FormData) {
   const email = (formData.get('email') as string)?.trim();
@@ -129,7 +129,6 @@ export async function updateProfileAction(formData: FormData) {
     return { error: 'Adventurer name must be between 3 and 24 characters.' };
   }
 
-  // Check if another user already has this username
   const { data: conflict } = await supabase
     .from('profiles')
     .select('id')
@@ -170,12 +169,34 @@ export async function createPostAction(formData: FormData) {
 
   const title = (formData.get('title') as string)?.trim();
   const description = (formData.get('description') as string)?.trim();
-  const coverImageUrl = (formData.get('cover_image_url') as string)?.trim() || null;
+  const rawCoverUrl = (formData.get('cover_image_url') as string)?.trim() || '';
   const rawTags = (formData.get('tags') as string) || '';
 
   if (!title || !description) {
     return { error: 'Both a title and description are required.' };
   }
+
+  // Ensure the author has a profile record so foreign key constraints never fail
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!existingProfile) {
+    const fallbackUsername =
+      (user.user_metadata?.username as string) ||
+      user.email?.split('@')[0] ||
+      `adventurer_${user.id.slice(0, 6)}`;
+    await supabase.from('profiles').insert({
+      id: user.id,
+      username: fallbackUsername.slice(0, 24),
+    });
+  }
+
+  const coverImageUrl = rawCoverUrl
+    ? normalizeUrl(rawCoverUrl)
+    : extractFirstMediaUrl(description);
 
   const slug = slugify(title);
 
@@ -186,7 +207,7 @@ export async function createPostAction(formData: FormData) {
       title,
       slug,
       description,
-      cover_image_url: coverImageUrl,
+      cover_image_url: coverImageUrl || null,
       is_published: true,
     })
     .select('id, slug')
@@ -202,9 +223,12 @@ export async function createPostAction(formData: FormData) {
     .filter((t) => t.length > 0)
     .slice(0, 5);
 
+  const seenSlugs = new Set<string>();
+
   for (const tagName of tagNames) {
     const tagSlug = tagName.replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
-    if (!tagSlug) continue;
+    if (!tagSlug || seenSlugs.has(tagSlug)) continue;
+    seenSlugs.add(tagSlug);
 
     let tagId: string | null = null;
     const { data: existingTag } = await supabase
@@ -220,20 +244,22 @@ export async function createPostAction(formData: FormData) {
         .from('tags')
         .insert({ name: tagName, slug: tagSlug })
         .select('id')
-        .single();
+        .maybeSingle();
       if (newTag) tagId = newTag.id;
     }
 
     if (tagId) {
-      await supabase.from('post_tags').insert({
-        post_id: post.id,
-        tag_id: tagId,
-      });
+      await supabase
+        .from('post_tags')
+        .upsert(
+          { post_id: post.id, tag_id: tagId },
+          { onConflict: 'post_id,tag_id', ignoreDuplicates: true }
+        );
     }
   }
 
   revalidatePath('/');
-  redirect(`/post/${post.slug}`);
+  return { success: true, slug: post.slug };
 }
 
 export async function deletePostAction(postId: string) {
@@ -256,7 +282,10 @@ export async function deletePostAction(postId: string) {
   redirect('/');
 }
 
-export async function togglePostLikeAction(postId: string, pathToRevalidate: string) {
+export async function togglePostLikeAction(
+  postId: string,
+  pathToRevalidate: string
+) {
   const supabase = await createClient();
   const {
     data: { user },
