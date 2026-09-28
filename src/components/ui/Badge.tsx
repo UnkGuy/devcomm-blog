@@ -53,24 +53,24 @@ export function GoldDivider({
 }: GoldDividerProps) {
   if (variant === 'parchment') {
     return (
-      <div className={cn('my-4 flex justify-center select-none', className)}>
+      <div className={cn('my-5 flex justify-center select-none', className)}>
         <img
           src="/assets/images/parchment-divider.png"
           alt=""
           aria-hidden="true"
-          className="h-7 sm:h-8 w-auto object-contain mix-blend-multiply opacity-85"
+          className="h-14 sm:h-20 w-full max-w-lg object-contain mix-blend-multiply opacity-90"
         />
       </div>
     );
   }
 
   return (
-    <div className={cn('my-3 flex justify-center select-none', className)}>
+    <div className={cn('my-4 flex justify-center select-none', className)}>
       <img
         src="/assets/images/divider-gold.png"
         alt=""
         aria-hidden="true"
-        className="h-6 sm:h-7 w-auto object-contain mix-blend-screen opacity-90"
+        className="h-11 sm:h-16 w-full max-w-lg object-contain mix-blend-screen opacity-95"
       />
     </div>
   );
@@ -83,12 +83,10 @@ interface WaxSealProps {
 }
 
 export function WaxSeal({ size = 36, seed, className }: WaxSealProps) {
-  // Deterministic initial seal for SSR so it never 404s or mismatches hydration
   const [sealSrc, setSealSrc] = useState<string>(() =>
     seed ? getWaxSealImage(seed) : WAX_SEAL_IMAGES[0]
   );
 
-  // Randomly pick one of the 5 wax seal colors on client mount
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * WAX_SEAL_IMAGES.length);
     setSealSrc(WAX_SEAL_IMAGES[randomIndex]);
