@@ -40,7 +40,7 @@ code, pre, .font-mono {
   min-width: 0;
 }
 
-/* Layer 2: Parchment Content Surface (Posts & Reader) */
+/* Layer 2A: Weathered Sepia Parchment (parchment.jpg) */
 .parchment-scroll {
   background-color: #e2cfa5;
   background-image: url('/assets/images/parchment.jpg');
@@ -54,6 +54,41 @@ code, pre, .font-mono {
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* Layer 2B: Creased Golden Vellum (parchment2.jpg) */
+.parchment-scroll-alt {
+  background-color: #eddcb4;
+  background-image: url('/assets/images/parchment2.jpg');
+  background-repeat: repeat;
+  background-size: 480px 480px;
+  color: var(--ink-dark);
+  border: 1px solid #9c7a44;
+  box-shadow:
+    inset 0 0 36px rgba(48, 28, 8, 0.38),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Fantasy Reliquary Frame for Embedded Images & Videos */
+.fantasy-media-frame {
+  background-color: #14100d;
+  padding: 6px;
+  border: 1px solid #6e552f;
+  box-shadow:
+    inset 0 0 0 1px rgba(200, 170, 110, 0.25),
+    0 6px 16px rgba(20, 12, 4, 0.45);
+}
+
+.fantasy-media-img {
+  filter: sepia(0.22) contrast(1.04) brightness(0.96);
+  transition: filter 0.3s ease;
+}
+
+.fantasy-media-frame:hover .fantasy-media-img {
+  filter: sepia(0) contrast(1) brightness(1);
 }
 
 /* Markdown Reader Typography */
