@@ -1,11 +1,16 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { marked } from 'marked';
-import { ArrowLeft, Calendar, User, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { deletePostAction } from '@/lib/actions/post.actions';
 import type { PostWithDetails, CommentWithAuthor } from '@/types/database.types';
-import { formatRelativeDate } from '@/lib/utils';
+import {
+  formatRelativeDate,
+  getParchmentClass,
+  parseMediaUrl,
+  DND_AVATAR_PRESETS,
+} from '@/lib/utils';
 import { Badge, GoldDivider, WaxSeal } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { LikeButton } from '@/components/post/LikeButton';
@@ -98,6 +103,10 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
     user && (user.id === post.author_id || currentUserRole === 'admin')
   );
 
+  const parchmentClass = getParchmentClass(post.id);
+  const media = parseMediaUrl(post.cover_image_url);
+  const authorAvatar = post.profiles?.avatar_url || DND_AVATAR_PRESETS[0].url;
+
   const safeMarkdown = post.description.replace(
     /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
     ''
@@ -111,7 +120,6 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Top Navigation Row */}
       <div className="flex items-center justify-between">
         <Link
           href="/"
@@ -131,8 +139,8 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
         )}
       </div>
 
-      {/* Main Unfurled Parchment Scroll */}
-      <article className="parchment-scroll p-6 sm:p-12 overflow-hidden">
+      {/* Main Unfurled Parchment Scroll (Matches Noticeboard Parchment Variant) */}
+      <article className={`${parchmentClass} p-6 sm:p-12 overflow-hidden`}>
         <div className="flex justify-center flex-wrap gap-1.5 mb-4">
           {tags.length > 0 ? (
             tags.map((tag) => (
@@ -149,9 +157,13 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
           {post.title}
         </h1>
 
-        <div className="mt-3 flex items-center justify-center gap-4 text-xs sm:text-sm text-[#4a3319] flex-wrap">
-          <span className="inline-flex items-center gap-1.5 font-semibold">
-            <User className="w-4 h-4" />
+        <div className="mt-3 flex items-center justify-center gap-3 text-xs sm:text-sm text-[#4a3319] flex-wrap">
+          <span className="inline-flex items-center gap-2 font-semibold">
+            <img
+              src={authorAvatar}
+              alt={post.profiles?.username || 'Scribe'}
+              className="w-6 h-6 rounded-full object-cover border border-[#6e552f]"
+            />
             <span>Inscribed by {post.profiles?.username || 'Unknown Scribe'}</span>
           </span>
           <span>&bull;</span>
@@ -161,8 +173,37 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
           </span>
         </div>
 
-        {/* Uses parchment-divider.png */}
         <GoldDivider variant="parchment" />
+
+        {/* Framed Image or Scrying Vision (Video) */}
+        {media.type !== 'none' && media.embedUrl && (
+          <div className="my-6 fantasy-media-frame">
+            {media.type === 'image' && (
+              <img
+                src={media.embedUrl}
+                alt={post.title}
+                className="w-full max-h-[460px] object-cover fantasy-media-img"
+              />
+            )}
+            {media.type === 'youtube' && (
+              <div className="aspect-video w-full">
+                <iframe
+                  src={media.embedUrl}
+                  className="w-full h-full"
+                  allowFullScreen
+                  title={post.title}
+                />
+              </div>
+            )}
+            {media.type === 'video' && (
+              <video
+                src={media.embedUrl}
+                controls
+                className="w-full max-h-[460px] bg-black"
+              />
+            )}
+          </div>
+        )}
 
         <div
           className="lore-content mt-6 text-[#23170b] [overflow-wrap:anywhere] first-letter:font-display first-letter:text-5xl first-letter:font-bold first-letter:float-left first-letter:mr-3 first-letter:leading-none first-letter:text-[#7c2d12]"
