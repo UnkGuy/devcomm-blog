@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { UserPopover } from '@/components/user/UserPopover';
 import Link from 'next/link';
 import { marked } from 'marked';
 import { ArrowLeft, Calendar, Trash2, ExternalLink } from 'lucide-react';
@@ -162,19 +163,16 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
         </h1>
 
         <div className="mt-3 flex items-center justify-center gap-3 text-xs sm:text-sm text-[#4a3319] flex-wrap">
-          <span className="inline-flex items-center gap-2 font-semibold">
-            <img
-              src={authorAvatar}
-              alt={post.profiles?.username || 'Scribe'}
-              className="w-6 h-6 rounded-full object-cover border border-[#6e552f]"
-            />
-            <span>Inscribed by {post.profiles?.username || 'Unknown Scribe'}</span>
-          </span>
-          <span>&bull;</span>
           <span className="inline-flex items-center gap-1.5">
-            <Calendar className="w-4 h-4"/>
-            <span>{formatRelativeDate(post.created_at)}</span>
-          </span>
+  <span>Inscribed by</span>
+  <UserPopover
+    userId={post.author_id}
+    username={post.profiles?.username || 'Unknown Scribe'}
+    avatarUrl={post.profiles?.avatar_url}
+    role={post.profiles?.role}
+    variant="parchment"
+  />
+</span>
         </div>
 
         <GoldDivider variant="parchment"/>

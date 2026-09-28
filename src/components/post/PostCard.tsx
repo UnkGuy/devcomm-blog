@@ -1,3 +1,4 @@
+import { UserPopover } from '@/components/user/UserPopover';
 import Link from 'next/link';
 import { MessageSquare, Calendar, Film, ExternalLink } from 'lucide-react';
 import type { PostWithDetails } from '@/types/database.types';
@@ -116,14 +117,13 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
       {/* Card Footer */}
       <div className="mt-6 pt-3 border-t border-[#8c6a3d]/50 flex items-center justify-between gap-2 text-xs text-[#4a3319] flex-wrap">
         <div className="flex items-center gap-2.5">
-          <img
-            src={authorAvatar}
-            alt={post.profiles?.username || 'Scribe'}
-            className="w-6 h-6 rounded-full object-cover border border-[#6e552f]"
-          />
-          <span className="font-semibold">
-            {post.profiles?.username || 'Unknown Scribe'}
-          </span>
+          <UserPopover
+  userId={post.author_id}
+  username={post.profiles?.username || 'Unknown Scribe'}
+  avatarUrl={post.profiles?.avatar_url}
+  role={post.profiles?.role}
+  variant="parchment"
+/>
           <span className="inline-flex items-center gap-1 opacity-80">
             <Calendar className="w-3.5 h-3.5"/>
             {formatRelativeDate(post.created_at)}
