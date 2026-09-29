@@ -253,3 +253,8 @@ code, pre, .font-mono {
 .lore-content ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; }
 .lore-content ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 1rem; }
 .lore-content li { margin-bottom: 0.25rem; }
+
+/* Force TipTap to respect empty lines (Enter presses) */
+.lore-content p:empty::after {
+  content: "\00A0";
+}

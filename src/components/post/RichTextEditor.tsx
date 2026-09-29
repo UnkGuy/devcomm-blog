@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
@@ -12,6 +12,36 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
+// Custom TipTap Extension to allow saving Line Height and Letter Spacing attributes!
+const SpacingExtension = Extension.create({
+  name: 'spacing',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph', 'heading'],
+        attributes: {
+          lineHeight: {
+            default: null,
+            parseHTML: element => element.style.lineHeight || null,
+            renderHTML: attributes => {
+              if (!attributes.lineHeight) return {};
+              return { style: `line-height: ${attributes.lineHeight}` };
+            }
+          },
+          letterSpacing: {
+            default: null,
+            parseHTML: element => element.style.letterSpacing || null,
+            renderHTML: attributes => {
+              if (!attributes.letterSpacing) return {};
+              return { style: `letter-spacing: ${attributes.letterSpacing}` };
+            }
+          }
+        }
+      }
+    ];
+  }
+});
+
 interface RichTextEditorProps {
   content: string;
   onChange: (html: string) => void;
@@ -21,21 +51,21 @@ interface RichTextEditorProps {
 export function RichTextEditor({ content, onChange, onError }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3] },
-      }),
+      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      SpacingExtension,
       Image.configure({
-        HTMLAttributes: { class: 'fantasy-media-img max-h-[400px] w-auto mx-auto border border-[#6e552f] my-4' },
+        HTMLAttributes: { class: 'fantasy-media-img max-h-[400px] w-auto mx-auto border border-[#6e552f] my-4 cursor-zoom-in' },
       }),
       Youtube.configure({
         HTMLAttributes: { class: 'w-full aspect-video border border-[#6e552f] my-4' },
       }),
       Link.configure({
         openOnClick: false,
-        HTMLAttributes: { class: 'text-[#c8aa6e] underline hover:text-[#f3e5c8] transition-colors' },
+        autolink: true,
+        HTMLAttributes: { class: 'text-[#c8aa6e] underline hover:text-[#f3e5c8] transition-colors cursor-pointer' },
       }),
       Placeholder.configure({
-        placeholder: 'Inscribe your tale here... Type / to see commands or use the toolbar above.',
+        placeholder: 'Inscribe your tale here... Paste an Imgur or YouTube link and it will automatically embed itself!',
         emptyEditorClass: 'is-editor-empty before:content-[attr(data-placeholder)] before:text-[#786852] before:float-left before:pointer-events-none',
       }),
     ],
@@ -53,13 +83,10 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
   const addImage = useCallback(async () => {
     const input = document.createElement('input');
     input.type = 'file';
-    // Strictly enforcing images only (no videos)
     input.accept = 'image/jpeg,image/png,image/webp,image/gif';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      
-      // Increased to 10MB max limit
       if (file.size > 10 * 1024 * 1024) {
         onError('Images must be under 10MB.');
         return;
@@ -79,7 +106,7 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
       }
 
       const { data: { publicUrl } } = supabase.storage.from('blog-media').getPublicUrl(path);
-      editor?.chain().focus().setImage({ src: publicUrl }).run();
+      editor?.chain().focus().setImage({ src: publicUrl }).insertContent('<p></p>').run();
     };
     input.click();
   }, [editor, onError]);
@@ -87,26 +114,32 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
   const addYoutube = useCallback(() => {
     const url = prompt('Enter a YouTube URL:');
     if (url && editor) {
-      editor.chain().focus().setYoutubeVideo({ src: url }).run();
+      editor.chain().focus().setYoutubeVideo({ src: url }).insertContent('<p></p>').run();
     }
   }, [editor]);
 
   const addLink = useCallback(() => {
-    const previousUrl = editor?.getAttributes('link').href;
+    if (!editor) return;
+    const previousUrl = editor.getAttributes('link').href;
     const url = prompt('URL:', previousUrl);
     
     if (url === null) return; 
     if (url === '') {
-      editor?.chain().focus().extendMarkRange('link').unsetLink().run();
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
       return;
     }
-    editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      editor.chain().focus().insertContent(`<a href="${url}">${url}</a> `).run();
+    } else {
+      editor.chain().focus().setLink({ href: url }).run();
+    }
   }, [editor]);
 
   const addDiceRoll = useCallback(() => {
     const roll = Math.floor(Math.random() * 20) + 1;
     const rollType = roll === 20 ? ' *(Critical Success!)*' : roll === 1 ? ' *(Critical Fail!)*' : '';
-    // Removed the Blockquote so it just inserts as a normal paragraph
     editor?.chain().focus().insertContent(`<p>🎲 <strong>Author's Roll (1d20)</strong>: ${roll}${rollType}</p>`).run();
   }, [editor]);
 
@@ -114,6 +147,7 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
 
   return (
     <div className="border border-[#6e552f] overflow-hidden flex flex-col">
+      {/* Upper Toolbar */}
       <div className="flex items-center gap-1 flex-wrap bg-[#14100d] px-2 py-1.5 border-b border-[#6e552f]">
         <ToolbarBtn icon={<Bold className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold" />
         <ToolbarBtn icon={<Italic className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic" />
@@ -132,6 +166,37 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
         <ToolbarBtn icon={<Film className="w-4 h-4"/>} onClick={addYoutube} active={false} title="Embed YouTube Video" />
 
         <div className="w-px h-5 bg-[#6e552f]/50 mx-1" />
+
+        {/* Spacing Controls */}
+        <select 
+          onChange={(e) => {
+            if (!e.target.value) return;
+            editor.chain().focus().updateAttributes('paragraph', { lineHeight: e.target.value }).updateAttributes('heading', { lineHeight: e.target.value }).run();
+            e.target.value = ''; 
+          }}
+          className="bg-[#0b0908] text-[#c8aa6e] border border-[#6e552f] text-[10px] uppercase tracking-widest p-1 focus:outline-none cursor-pointer"
+          title="Adjust Line Spacing"
+        >
+          <option value="">Line Spacing</option>
+          <option value="1.25">Tight</option>
+          <option value="1.75">Normal</option>
+          <option value="2.5">Relaxed</option>
+        </select>
+        
+        <select 
+          onChange={(e) => {
+            if (!e.target.value) return;
+            editor.chain().focus().updateAttributes('paragraph', { letterSpacing: e.target.value }).updateAttributes('heading', { letterSpacing: e.target.value }).run();
+            e.target.value = '';
+          }}
+          className="bg-[#0b0908] text-[#c8aa6e] border border-[#6e552f] text-[10px] uppercase tracking-widest p-1 focus:outline-none cursor-pointer ml-1"
+          title="Adjust Character Spacing"
+        >
+          <option value="">Char Spacing</option>
+          <option value="-0.03em">Tight</option>
+          <option value="normal">Normal</option>
+          <option value="0.08em">Wide</option>
+        </select>
 
         <button
           type="button"

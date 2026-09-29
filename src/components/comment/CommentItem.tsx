@@ -13,7 +13,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { CommentWithAuthor } from '@/types/database.types';
-import { formatRelativeDate, formatMarkdownWithAutoLinks } from '@/lib/utils';
+import { formatRelativeDate, formatMarkdownWithAutoLinks, getAvatarFallback } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { UserPopover } from '@/components/user/UserPopover';
@@ -62,7 +62,6 @@ export function CommentItem({
   const isCommentByPostOwner = comment.author_id === postAuthorId;
   const isDeleting = deletingId === comment.id;
 
-  // Process comment content to automatically embed YouTube videos and image URLs
   const renderedHtml = useMemo(() => {
     if (!comment.content.trim()) return '';
     const autoLinked = formatMarkdownWithAutoLinks(comment.content);
@@ -91,11 +90,7 @@ export function CommentItem({
 
   return (
     <div className="space-y-2.5">
-      <div
-        className={`bg3-panel p-4 sm:p-5 transition-opacity duration-200 ${
-          depth > 0 ? 'bg-[#120e0b] border-[#6e552f]/80' : ''
-        }`}
-      >
+      <div className={`bg3-panel p-3 sm:p-4 transition-opacity duration-200 ${depth > 0 ? 'bg-[#120e0b] border-[#6e552f]/80' : ''}`}>
         {depth > 0 && comment.parentAuthorUsername && (
           <div className="mb-2 flex items-center gap-1.5 text-xs text-[#c8aa6e] font-display uppercase tracking-wider">
             <CornerDownRight className="w-3.5 h-3.5 shrink-0" />
@@ -103,7 +98,7 @@ export function CommentItem({
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2 border-b border-[#6e552f]/40 pb-2.5 mb-3 flex-wrap">
+        <div className="flex items-center justify-between gap-2 border-b border-[#6e552f]/40 pb-2.5 mb-2.5 flex-wrap">
           <div className="flex items-center gap-2.5 flex-wrap">
             <UserPopover
               userId={comment.author_id}
@@ -115,17 +110,11 @@ export function CommentItem({
             />
 
             {comment.profiles?.role === 'admin' && (
-              <Badge variant="admin">
-                <Shield className="w-3 h-3" />
-                <span>Archivist</span>
-              </Badge>
+              <Badge variant="admin"><Shield className="w-3 h-3" /><span>Archivist</span></Badge>
             )}
 
             {isCommentByPostOwner && (
-              <Badge variant="author">
-                <Crown className="w-3 h-3" />
-                <span>Scroll Author</span>
-              </Badge>
+              <Badge variant="author"><Crown className="w-3 h-3" /><span>Scroll Author</span></Badge>
             )}
 
             <span className="text-xs text-[#8c7b65]">
@@ -146,13 +135,7 @@ export function CommentItem({
             )}
 
             {canDelete && (
-              <Button
-                type="button"
-                variant="crimson"
-                size="sm"
-                disabled={isDeleting}
-                onClick={() => onDelete(comment.id)}
-              >
+              <Button type="button" variant="crimson" size="sm" disabled={isDeleting} onClick={() => onDelete(comment.id)}>
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isDeleting ? 'Removing...' : 'Delete'}</span>
               </Button>
@@ -160,9 +143,9 @@ export function CommentItem({
           </div>
         </div>
 
-        {/* Embedded Comment Content */}
+        {/* Removed whitespace-pre-line to fix the huge gap bug */}
         <div
-          className="text-base text-[#e8dcc4] whitespace-pre-line leading-relaxed [overflow-wrap:anywhere] lore-content"
+          className="text-[15px] sm:text-base text-[#e8dcc4] leading-relaxed [overflow-wrap:anywhere] lore-content"
           dangerouslySetInnerHTML={{ __html: renderedHtml }}
         />
 
@@ -174,21 +157,9 @@ export function CommentItem({
               className="font-display text-[11px] uppercase tracking-wider text-[#c8aa6e] hover:text-[#f3e5c8] inline-flex items-center gap-1 cursor-pointer"
             >
               {repliesCollapsed ? (
-                <>
-                  <ChevronDown className="w-3.5 h-3.5" />
-                  <span>
-                    Show {comment.replies.length}{' '}
-                    {comment.replies.length === 1 ? 'Reply' : 'Replies'}
-                  </span>
-                </>
+                <><ChevronDown className="w-3.5 h-3.5" /><span>Show {comment.replies.length} {comment.replies.length === 1 ? 'Reply' : 'Replies'}</span></>
               ) : (
-                <>
-                  <ChevronUp className="w-3.5 h-3.5" />
-                  <span>
-                    Hide {comment.replies.length}{' '}
-                    {comment.replies.length === 1 ? 'Reply' : 'Replies'}
-                  </span>
-                </>
+                <><ChevronUp className="w-3.5 h-3.5" /><span>Hide {comment.replies.length} {comment.replies.length === 1 ? 'Reply' : 'Replies'}</span></>
               )}
             </button>
           </div>
@@ -213,13 +184,7 @@ export function CommentItem({
       )}
 
       {comment.replies.length > 0 && !repliesCollapsed && (
-        <div
-          className={
-            depth === 0
-              ? 'pl-4 sm:pl-7 border-l-2 border-[#6e552f]/60 space-y-2.5'
-              : 'space-y-2.5'
-          }
-        >
+        <div className={depth === 0 ? 'pl-4 sm:pl-7 border-l-2 border-[#6e552f]/60 space-y-2.5' : 'space-y-2.5'}>
           {comment.replies.map((reply) => (
             <CommentItem
               key={reply.id}

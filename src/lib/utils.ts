@@ -236,3 +236,30 @@ export function getAvatarFallback(seed?: string): string {
 
   return DND_AVATAR_PRESETS[Math.abs(hash) % DND_AVATAR_PRESETS.length].url;
 }
+export function processHtmlAutoLinks(html: string): string {
+  if (!html) return '';
+  // TipTap wraps pasted URLs in an <a> tag automatically. We intercept it!
+  const anchorRegex = /<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  
+  return html.replace(anchorRegex, (match, href, innerText) => {
+    // Only embed if the link text is the raw URL itself
+    const isRawLink = innerText.trim() === href.trim();
+    if (!isRawLink) return match;
+
+    let finalSrc = href;
+    if (/\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i.test(href) || href.includes('imgur.com')) {
+       // Auto-append .jpg if they pasted a raw imgur link without the extension
+       if (href.includes('imgur.com') && !/\.(jpe?g|png|gif|webp|svg)$/i.test(href)) {
+           finalSrc = href + '.jpg';
+       }
+       return `<div class="fantasy-media-frame my-4 overflow-hidden cursor-zoom-in"><img src="${finalSrc}" class="w-full max-h-[460px] object-cover fantasy-media-img" alt="Embedded Auto Image" /></div>`;
+    }
+
+    const ytMatch = href.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+    if (ytMatch && ytMatch[1]) {
+       return `<div class="fantasy-media-frame my-4"><div class="aspect-video w-full"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe></div></div>`;
+    }
+
+    return match;
+  });
+}

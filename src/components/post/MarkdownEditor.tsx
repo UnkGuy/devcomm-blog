@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Feather, Sparkles, AlertCircle, X } from 'lucide-react';
+import { Feather, Sparkles, AlertCircle, X, ArrowDown } from 'lucide-react';
 import { createPostAction } from '@/lib/actions/post.actions';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
@@ -64,7 +64,6 @@ export function MarkdownEditor() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     
-    // Strip empty HTML tags to check if there's actual content
     const strippedContent = description.replace(/<[^>]*>?/gm, '').trim();
     if (!strippedContent && !description.includes('<img') && !description.includes('<iframe')) {
       setError("Your scroll cannot be empty.");
@@ -76,7 +75,6 @@ export function MarkdownEditor() {
 
     const formData = new FormData(e.currentTarget);
     formData.set('tags', uniqueTags.join(', '));
-    // The server handles automatically extracting the first image in the HTML!
     formData.set('cover_image_url', ''); 
     formData.set('description', description);
 
@@ -95,15 +93,15 @@ export function MarkdownEditor() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-      <form onSubmit={handleSubmit} className="bg3-panel p-6 sm:p-8 space-y-5">
+    <div className="max-w-4xl mx-auto space-y-12 flex flex-col">
+      <form onSubmit={handleSubmit} className="bg3-panel p-6 sm:p-8 space-y-5 shadow-2xl">
         <div className="border-b border-[#6e552f]/60 pb-4">
           <h2 className="font-display text-xl font-bold text-[#e8cf96] flex items-center gap-2">
             <Feather className="w-5 h-5 text-[#c8aa6e]" />
             <span>Scribe&apos;s Inkwell</span>
           </h2>
           <p className="text-xs text-[#9e8f77] mt-0.5">
-            Rich text enabled. Format text, upload images, and embed scrying visions directly below.
+            Rich text enabled. Upload images, adjust spacing, and paste links to automatically embed scrying visions.
           </p>
         </div>
 
@@ -162,7 +160,11 @@ export function MarkdownEditor() {
           <RichTextEditor content={description} onChange={setDescription} onError={setError} />
         </div>
 
-        <div className="pt-2 flex justify-end">
+        <div className="pt-4 flex items-center justify-between">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#8c7b65] uppercase font-display tracking-widest">
+            <ArrowDown className="w-3.5 h-3.5 animate-bounce" />
+            Live Preview Below
+          </div>
           <Button type="submit" variant="gold" size="lg" disabled={loading} className="w-full sm:w-auto">
             <Sparkles className="w-4 h-4" />
             <span>{loading ? 'Sealing Scroll...' : 'Seal & Publish Scroll'}</span>
@@ -170,7 +172,10 @@ export function MarkdownEditor() {
         </div>
       </form>
 
-      <ScrollPreview title={title} uniqueTags={uniqueTags} coverMediaUrl="" description={description} />
+      {/* Stacked Preview Below */}
+      <div className="pt-4">
+        <ScrollPreview title={title} uniqueTags={uniqueTags} coverMediaUrl="" description={description} />
+      </div>
       <Toast message={error} type="error" onClose={() => setError(null)} />
     </div>
   );
