@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { X, Upload, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { updateProfileAction } from '@/lib/actions/post.actions';
-import { DND_AVATAR_PRESETS } from '@/lib/utils';
+import { getDiceBearAvatar } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 
 interface ProfileModalProps {
@@ -33,7 +33,7 @@ export function ProfileModal({
   const [username, setUsername] = useState(initialUsername);
   const [bio, setBio] = useState(initialBio || '');
   const [avatarUrl, setAvatarUrl] = useState(
-    initialAvatarUrl || DND_AVATAR_PRESETS[0].url
+    initialAvatarUrl || getDiceBearAvatar(initialUsername)
   );
   const [customUrlInput, setCustomUrlInput] = useState(
     initialAvatarUrl && !initialAvatarUrl.startsWith('data:image/svg')
@@ -48,7 +48,7 @@ export function ProfileModal({
     setMounted(true);
   }, []);
 
-  const activeAvatar = avatarUrl || DND_AVATAR_PRESETS[0].url;
+  const activeAvatar = avatarUrl || getDiceBearAvatar(initialUsername);
 
   async function handleAvatarFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -196,47 +196,12 @@ export function ProfileModal({
                       />
                     </label>
                     <p className="text-[11px] text-[#8c7b65]">
-                      JPG, PNG, WebP or GIF (Max 5MB) — or choose a D&amp;D crest below
+                      JPG, PNG, WebP or GIF (Max 5MB)
                     </p>
                   </div>
                 </div>
 
-                {/* Built-in D&D Class Presets (2 rows of 4 so names never wrap mid-word) */}
-                <div className="space-y-1.5">
-                  <label className="block font-display text-xs uppercase tracking-widest text-[#c8aa6e]">
-                    D&amp;D Class Emblems
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {DND_AVATAR_PRESETS.map((preset) => {
-                      const selected = avatarUrl === preset.url;
-                      return (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => {
-                            setAvatarUrl(preset.url);
-                            setCustomUrlInput('');
-                          }}
-                          className={`py-2 px-1.5 border flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                            selected
-                              ? 'border-[#c8aa6e] bg-[#2c2012] scale-[1.02]'
-                              : 'border-[#4a3a24] bg-[#0b0908] opacity-80 hover:opacity-100 hover:border-[#6e552f]'
-                          }`}
-                          title={preset.label}
-                        >
-                          <img
-                            src={preset.url}
-                            alt={preset.label}
-                            className="w-9 h-9 rounded-full"
-                          />
-                          <span className="font-display text-[10px] uppercase text-[#d4c3a3] whitespace-nowrap">
-                            {preset.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                
 
                 {/* Or Custom Avatar Image URL */}
                 <div className="space-y-1">

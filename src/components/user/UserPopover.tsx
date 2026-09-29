@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { formatRelativeDate, DND_AVATAR_PRESETS, cn } from '@/lib/utils';
+import { formatRelativeDate, getDiceBearAvatar, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 
 interface UserPopoverProps {
@@ -67,7 +67,7 @@ export function UserPopover({
   const [dossier, setDossier] = useState<UserDossierSummary | null>(null);
 
   const displayUsername = username || 'Unknown Scribe';
-  const displayAvatar = avatarUrl || DND_AVATAR_PRESETS[0].url;
+  const displayAvatar = avatarUrl || getDiceBearAvatar(displayUsername);
 
   useEffect(() => {
     setMounted(true);

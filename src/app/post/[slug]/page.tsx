@@ -11,7 +11,7 @@ import {
   getParchmentClass,
   parseMediaUrl,
   formatMarkdownWithAutoLinks,
-  DND_AVATAR_PRESETS,
+  getDiceBearAvatar,
 } from '@/lib/utils';
 import { Badge, GoldDivider, WaxSeal } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -109,17 +109,11 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
   const parchmentClass = getParchmentClass(post.id);
   const media = parseMediaUrl(post.cover_image_url);
 
-  const safeMarkdown = formatMarkdownWithAutoLinks(
-    post.description.replace(
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      ''
-    )
+  // TipTap outputs HTML directly, so we just strip scripts for safety
+  const htmlContent = post.description.replace(
+    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+    ''
   );
-  const htmlContent = marked.parse(safeMarkdown, {
-    async: false,
-    gfm: true,
-    breaks: true,
-  }) as string;
 
   async function handleDeletePost() {
     'use server';

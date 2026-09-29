@@ -208,28 +208,7 @@ export function formatMarkdownWithAutoLinks(markdown: string): string {
   return processedLines.join('\n');
 }
 
-// 8 Built-In D&D Class Crest Avatars (SVG Data URIs so they never break)
-function createClassSvg(label: string, symbol: string, bg: string, border: string) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <rect width="100" height="100" rx="50" fill="${bg}"/>
-    <circle cx="50" cy="50" r="45" fill="none" stroke="${border}" stroke-width="3"/>
-    <circle cx="50" cy="50" r="39" fill="none" stroke="${border}" stroke-width="1" stroke-dasharray="3,3"/>
-    <text x="50" y="58" font-size="36" text-anchor="middle" fill="#f3e5c8" font-family="serif">${symbol}</text>
-  </svg>`;
-  return {
-    id: label.toLowerCase(),
-    label,
-    url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
-  };
+// Dynamic DiceBear Adventurer Avatars
+export function getDiceBearAvatar(seed: string): string {
+  return `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=14100d&scale=90`;
 }
-
-export const DND_AVATAR_PRESETS = [
-  createClassSvg('Wizard', '✦', '#1e1b4b', '#c8aa6e'),
-  createClassSvg('Paladin', '❖', '#3b2a14', '#e2c07d'),
-  createClassSvg('Rogue', '🗡', '#18181b', '#a1a1aa'),
-  createClassSvg('Bard', '♪', '#3b0764', '#e8cf96'),
-  createClassSvg('Warlock', '◈', '#31102f', '#f43f5e'),
-  createClassSvg('Ranger', '↟', '#142615', '#86efac'),
-  createClassSvg('Cleric', '☀', '#2c2012', '#fde68a'),
-  createClassSvg('Fighter', '⚔', '#450a0a', '#fca5a5'),
-];

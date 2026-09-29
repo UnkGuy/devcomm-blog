@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { PostWithDetails } from '@/types/database.types';
-import { DND_AVATAR_PRESETS } from '@/lib/utils';
+import { getDiceBearAvatar } from '@/lib/utils';
 import { Badge, GoldDivider } from '@/components/ui/Badge';
 import { PostFeed } from '@/components/post/PostFeed';
 import { InlineBioEditor } from './InlineBioEditor';
@@ -113,7 +113,7 @@ export default async function ScribeProfilePage({
     .order('created_at', { ascending: false })
     .limit(12);
 
-  const avatarUrl = profile.avatar_url || DND_AVATAR_PRESETS[0].url;
+  const avatarUrl = profile.avatar_url || getDiceBearAvatar(profile.username);
   const isOwnProfile = user?.id === profile.id;
 
   return (

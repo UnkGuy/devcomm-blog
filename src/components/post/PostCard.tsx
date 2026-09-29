@@ -6,7 +6,7 @@ import {
   formatRelativeDate,
   getParchmentClass,
   parseMediaUrl,
-  DND_AVATAR_PRESETS,
+  getDiceBearAvatar,
 } from '@/lib/utils';
 import { Badge, WaxSeal } from '@/components/ui/Badge';
 import { LikeButton } from './LikeButton';
@@ -39,7 +39,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
   const excerpt = cleanText.slice(0, dynamicPreviewLimit);
 
   const media = parseMediaUrl(post.cover_image_url);
-  const authorAvatar = post.profiles?.avatar_url || DND_AVATAR_PRESETS[0].url;
+  const authorAvatar = post.profiles?.avatar_url || getDiceBearAvatar(post.profiles?.username || 'Scribe');
 
   return (
     <article
