@@ -26,8 +26,7 @@ export function PostFeed({ initialPosts, tags, currentUserId }: PostFeedProps) {
   // Measure window size to determine column count
   useEffect(() => {
     function handleResize() {
-      if (window.innerWidth >= 1024) setColumnCount(3);
-      else if (window.innerWidth >= 768) setColumnCount(2);
+      if (window.innerWidth >= 768) setColumnCount(2);
       else setColumnCount(1);
     }
     handleResize(); // Set initial
