@@ -7,7 +7,8 @@ export async function addCommentAction(
   postId: string,
   content: string,
   postSlug: string,
-  parentId: string | null = null
+  parentId: string | null = null,
+  skillCheck?: { skill: string; modifier: number } | null
 ) {
   const supabase = await createClient();
   const {
@@ -18,9 +19,25 @@ export async function addCommentAction(
     return { error: 'You must be signed in to comment.' };
   }
 
-  const trimmed = content.trim();
-  if (!trimmed) {
+  let finalContent = content.trim();
+  if (!finalContent) {
     return { error: 'Comment cannot be empty.' };
+  }
+
+  // Inject a server-verified dice roll if the user requested one
+  if (skillCheck) {
+    const baseRoll = Math.floor(Math.random() * 20) + 1;
+    const total = baseRoll + skillCheck.modifier;
+    const modString =
+      skillCheck.modifier >= 0 ? `+${skillCheck.modifier}` : `${skillCheck.modifier}`;
+    const rollType =
+      baseRoll === 20
+        ? ' **(Natural 20!)**'
+        : baseRoll === 1
+        ? ' **(Critical Fail!)**'
+        : '';
+
+    finalContent += `\n\n> 🎲 **${skillCheck.skill} Check**: Rolled **${total}** *(1d20${modString} ➔ ${baseRoll}${rollType})*`;
   }
 
   const { data, error } = await supabase
@@ -29,7 +46,7 @@ export async function addCommentAction(
       post_id: postId,
       author_id: user.id,
       parent_id: parentId,
-      content: trimmed,
+      content: finalContent,
     })
     .select(
       `
@@ -63,7 +80,6 @@ export async function deleteCommentAction(commentId: string, postSlug: string) {
     return { error: 'Unauthorized: Please sign in.' };
   }
 
-  // RLS enforces that only the comment author, the post owner (Req #5), or an admin can delete
   const { error } = await supabase
     .from('comments')
     .delete()
