@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-md mx-auto my-10">
-      <div className="bg3-panel p-6 sm:p-8">
+      <div className="Tabletop Roleplay-panel p-6 sm:p-8">
         <div className="text-center mb-6">
           <WaxSeal size={52} className="mb-2" />
           <h1 className="font-display text-2xl font-bold text-[#e8cf96]">
