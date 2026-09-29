@@ -14,10 +14,11 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const variants = {
-    gold: 'bg-[#2c2012] text-[#e8cf96] border-[#c8aa6e] hover:bg-[#3d2c19] hover:text-[#fff3d1]',
-    crimson: 'bg-[#5c1313] text-[#fbd5d5] border-[#dc2626] hover:bg-[#751919]',
-    obsidian: 'bg-[#14100d] text-[#c8b696] border-[#6e552f] hover:border-[#c8aa6e] hover:text-[#f3e5c8]',
+  
+const variants = {
+  gold: 'btn-wood-plaque',
+  obsidian: 'bg-[#14100d] text-[#d4c3a3] border border-[#6e552f] hover:border-[#c8aa6e] hover:text-[#e8cf96] shadow-md',
+  crimson: 'btn-oxblood-danger', // <-- Oxblood Leather & Scorched Metal
     parchment: 'bg-[#2b1d0f] text-[#f3e5c8] border-[#6e552f] hover:bg-[#3d2915]',
   };
 

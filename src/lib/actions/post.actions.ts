@@ -46,29 +46,15 @@ export async function signUpAction(formData: FormData) {
     return { error: 'All fields are required.' };
   }
 
-  if (username.length < 3 || username.length > 24) {
-    return { error: 'Username must be between 3 and 24 characters.' };
-  }
-
   const supabase = await createClient();
 
-  const { data: existingUser } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('username', username)
-    .maybeSingle();
-
-  if (existingUser) {
-    return { error: 'Username is already taken. Please choose another.' };
-  }
-
+  // Sign up with email confirmation redirect
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        username,
-      },
+      data: { username },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
     },
   });
 
@@ -76,14 +62,13 @@ export async function signUpAction(formData: FormData) {
     return { error: error.message };
   }
 
-  if (data.user) {
-    await supabase.from('audit_logs').insert({
-      actor_id: data.user.id,
-      action: 'USER_SIGNUP',
-      table_name: 'auth.users',
-      record_id: data.user.id,
-      metadata: { email, username },
-    });
+  // If Supabase has email confirmation turned on, data.session will be null
+  if (data.user && !data.session) {
+    return {
+      success: true,
+      needsConfirmation: true,
+      message: 'A guild confirmation courier has been dispatched to your email address! Please click the ink-stamped link to verify your identity.',
+    };
   }
 
   revalidatePath('/', 'layout');
