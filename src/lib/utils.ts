@@ -224,3 +224,15 @@ export const DND_AVATAR_PRESETS = [
   createClassSvg('Cleric', '☀', '#2c2012', '#fde68a'),
   createClassSvg('Fighter', '⚔', '#450a0a', '#fca5a5'),
 ];
+
+export function getAvatarFallback(seed?: string): string {
+  const source = (seed || 'Scribe').trim() || 'Scribe';
+  let hash = 0;
+
+  for (let i = 0; i < source.length; i++) {
+    hash = (hash << 5) - hash + source.charCodeAt(i);
+    hash |= 0;
+  }
+
+  return DND_AVATAR_PRESETS[Math.abs(hash) % DND_AVATAR_PRESETS.length].url;
+}
