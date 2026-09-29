@@ -11,9 +11,10 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { PostWithDetails } from '@/types/database.types';
-import { formatRelativeDate, DND_AVATAR_PRESETS } from '@/lib/utils';
+import { DND_AVATAR_PRESETS } from '@/lib/utils';
 import { Badge, GoldDivider } from '@/components/ui/Badge';
 import { PostFeed } from '@/components/post/PostFeed';
+import { InlineBioEditor } from './InlineBioEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +43,7 @@ export default async function ScribeProfilePage({
     notFound();
   }
 
-  // Fetch all published scrolls by this user
+  // Fetch published scrolls by this user
   const { data: rawPosts } = await supabase
     .from('posts')
     .select(
@@ -75,7 +76,6 @@ export default async function ScribeProfilePage({
 
   const posts = (rawPosts as unknown as PostWithDetails[]) || [];
 
-  // Extract unique tags used by this scribe for their personal Noticeboard filter
   const scribeTagsMap = new Map<
     string,
     { id: string; name: string; slug: string }
@@ -89,35 +89,29 @@ export default async function ScribeProfilePage({
   });
   const scribeTags = Array.from(scribeTagsMap.values());
 
-  // Total likes received across all their scrolls
   const totalInspiration = posts.reduce(
     (sum, post) => sum + (post.post_likes?.length || 0),
     0
   );
 
-  // Fetch recent whispers (comments/replies) by this user
   const { data: recentComments } = await supabase
     .from('comments')
-    .select('id, content, created_at, parent_id, post_id')
+    .select(
+      `
+      id,
+      content,
+      created_at,
+      parent_id,
+      posts:post_id (
+        id,
+        title,
+        slug
+      )
+    `
+    )
     .eq('author_id', profile.id)
     .order('created_at', { ascending: false })
     .limit(12);
-
-  const postIds =
-    recentComments
-      ?.map((comment) => comment.post_id)
-      .filter((id): id is string => Boolean(id)) || [];
-
-  const relatedPosts = postIds.length
-    ? await supabase
-        .from('posts')
-        .select('id, title, slug')
-        .in('id', postIds)
-    : { data: [] as { id: string; title: string; slug: string }[] };
-
-  const postById = new Map(
-    (relatedPosts.data || []).map((post) => [post.id, post])
-  );
 
   const avatarUrl = profile.avatar_url || DND_AVATAR_PRESETS[0].url;
   const isOwnProfile = user?.id === profile.id;
@@ -164,12 +158,13 @@ export default async function ScribeProfilePage({
               )}
             </div>
 
-            <p className="text-sm sm:text-base text-[#d4c3a3] italic max-w-2xl">
-              &ldquo;
-              {profile.bio ||
-                'A wandering scribe of the Chronicler’s Archive, yet to inscribe a personal motto.'}
-              &rdquo;
-            </p>
+            {/* In-Place Bio Editor Component */}
+            <InlineBioEditor
+              initialBio={profile.bio}
+              username={profile.username}
+              avatarUrl={profile.avatar_url}
+              isOwnProfile={isOwnProfile}
+            />
 
             <div className="pt-2 flex items-center justify-center sm:justify-start gap-4 text-xs text-[#9e8f77] flex-wrap">
               <span className="inline-flex items-center gap-1.5">
@@ -199,7 +194,7 @@ export default async function ScribeProfilePage({
         <GoldDivider className="mt-6 mb-0" />
       </section>
 
-      {/* Section 1: User's Personal Noticeboard (All Their Scrolls) */}
+      {/* Scribe's Scrolls Noticeboard */}
       <section className="space-y-4">
         <div className="flex items-center justify-between border-b border-[#6e552f] pb-2.5">
           <h2 className="font-display text-xl font-bold text-[#e8cf96] flex items-center gap-2">
@@ -215,21 +210,23 @@ export default async function ScribeProfilePage({
         />
       </section>
 
-      {/* Section 2: User's Recent Whispers & Replies History */}
+      {/* Recent Whispers & Replies */}
       <section className="space-y-4 pt-4">
         <div className="flex items-center justify-between border-b border-[#6e552f] pb-2.5">
           <h2 className="font-display text-xl font-bold text-[#e8cf96] flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-[#c8aa6e]" />
-            <span>
-              Recent Whispers &amp; Counsel ({recentComments?.length || 0})
-            </span>
+            <span>Recent Whispers &amp; Counsel ({recentComments?.length || 0})</span>
           </h2>
         </div>
 
         {recentComments && recentComments.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {recentComments.map((c) => {
-              const targetPost = c.post_id ? postById.get(c.post_id) ?? null : null;
+              const rawPost = c.posts as unknown as
+                | { id: string; title: string; slug: string }
+                | { id: string; title: string; slug: string }[]
+                | null;
+              const targetPost = Array.isArray(rawPost) ? rawPost[0] : rawPost;
 
               return (
                 <div
@@ -252,7 +249,7 @@ export default async function ScribeProfilePage({
                         )}
                       </span>
                       <span className="shrink-0">
-                        {formatRelativeDate(c.created_at)}
+                        {new Date(c.created_at).toLocaleDateString()}
                       </span>
                     </div>
                     <p className="text-sm text-[#e8dcc4] line-clamp-3 italic">
