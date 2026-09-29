@@ -33,6 +33,8 @@ export function CommentForm({
   const [content, setContent] = useState('');
   const [showSkillCheck, setShowSkillCheck] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState(DND_SKILLS[0]);
+  const [modifier, setModifier] = useState<number>(0);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +47,9 @@ export function CommentForm({
     setSubmitting(true);
     setError(null);
 
-    const skillCheckData = showSkillCheck ? { skill: selectedSkill } : null;
+    const skillCheckData = showSkillCheck
+      ? { skill: selectedSkill, modifier }
+      : null;
 
     const result = await addCommentAction(
       postId,
@@ -62,31 +66,13 @@ export function CommentForm({
     }
 
     if (result?.data) {
-      // If the server rolled a die, trigger the global BG3 animation
-      if (result.rollResult) {
-        window.dispatchEvent(
-          new CustomEvent('trigger-dice-roll', {
-            detail: { type: 'skill', result: result.rollResult, label: `${selectedSkill} Check` },
-          })
-        );
-        // Delay inserting the comment so the user watches the dice roll first
-        setTimeout(() => {
-          onCommentAdded(result.data as unknown as CommentWithAuthor);
-          setContent('');
-          setShowSkillCheck(false);
-          onCancel?.();
-          setSubmitting(false);
-        }, 2500);
-      } else {
-        onCommentAdded(result.data as unknown as CommentWithAuthor);
-        setContent('');
-        setShowSkillCheck(false);
-        onCancel?.();
-        setSubmitting(false);
-      }
-    } else {
-      setSubmitting(false);
+      onCommentAdded(result.data as unknown as CommentWithAuthor);
+      setContent('');
+      setShowSkillCheck(false);
+      setModifier(0);
+      onCancel?.();
     }
+    setSubmitting(false);
   }
 
   return (
@@ -136,12 +122,12 @@ export function CommentForm({
         className="w-full px-3.5 py-2 bg-[#0b0908] border border-[#6e552f] text-[#f3e5c8] placeholder:text-[#786852] focus:outline-none focus:border-[#c8aa6e] text-sm sm:text-base"
       />
 
-      {/* Pure 1d20 Skill Check Attacher */}
+      {/* Optional Skill Check Attacher */}
       {showSkillCheck && (
         <div className="flex items-center gap-2 bg-[#1c1612] p-2 border border-[#6e552f]/60 flex-wrap">
           <Dices className="w-4 h-4 text-[#c8aa6e]" />
           <span className="text-xs text-[#d4c3a3] font-display uppercase tracking-wider">
-            Roll 1d20 for:
+            Roll Check:
           </span>
           <select
             value={selectedSkill}
@@ -174,7 +160,7 @@ export function CommentForm({
             className="text-[11px] font-display uppercase tracking-wider text-[#9e8f77] hover:text-[#c8aa6e] flex items-center gap-1.5 border border-transparent hover:border-[#6e552f] px-2 py-1 transition-colors"
           >
             <Dices className="w-3.5 h-3.5" />
-            <span>Attach Skill Check (1d20)</span>
+            <span>Attach Skill Check</span>
           </button>
         ) : (
           <div /> // Spacer
@@ -190,7 +176,7 @@ export function CommentForm({
             <Send className="w-3.5 h-3.5" />
             <span>
               {submitting
-                ? (showSkillCheck ? 'Rolling...' : 'Inscribing...')
+                ? 'Inscribing...'
                 : isReply
                 ? 'Post Reply'
                 : 'Post Whisper'}

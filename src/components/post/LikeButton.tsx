@@ -30,28 +30,10 @@ export function LikeButton({
     e.preventDefault();
     e.stopPropagation();
 
-    if (!optimisticState.isLiked) {
-      // Fire global dice roll animation
-      const result = Math.floor(Math.random() * 20) + 1;
-      window.dispatchEvent(
-        new CustomEvent('trigger-dice-roll', {
-          detail: { type: 'inspiration', result },
-        })
-      );
-      // Wait for the animation before locking in the like
-      setTimeout(() => {
-        startTransition(async () => {
-          setOptimisticState(null);
-          await togglePostLikeAction(postId, currentPath);
-        });
-      }, 1500);
-    } else {
-      // Removing like happens instantly
-      startTransition(async () => {
-        setOptimisticState(null);
-        await togglePostLikeAction(postId, currentPath);
-      });
-    }
+    startTransition(async () => {
+      setOptimisticState(null);
+      await togglePostLikeAction(postId, currentPath);
+    });
   }
 
   return (
@@ -64,7 +46,7 @@ export function LikeButton({
           ? 'bg-[#3d2915] text-[#f3d89c] border-[#c8aa6e] shadow-[0_0_8px_rgba(200,170,110,0.4)]'
           : 'bg-[#23170b]/10 text-[#3d2712] border-[#8c6a3d] hover:bg-[#23170b]/20 hover:text-[#5c3e21]'
       }`}
-      title="Grant Inspiration (Like)"
+      title="Grant Inspiration"
     >
       <Sparkles className="w-4 h-4" />
       <span>{optimisticState.count}</span>
