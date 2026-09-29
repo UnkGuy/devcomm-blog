@@ -50,7 +50,7 @@ export function ScrollPreview({
           </div>
         </div>
 
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-[#1a0f05] text-center leading-tight [overflow-wrap:anywhere]">
+        <h1 className="font-display text-4xl sm:text-5xl font-bold text-[#1a0f05] text-center leading-tight [overflow-wrap:anywhere]">
           {title.trim() || 'Untitled Chronicle'}
         </h1>
 

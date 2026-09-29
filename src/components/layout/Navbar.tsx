@@ -34,8 +34,8 @@ export default async function Navbar() {
         <Link href="/" className="flex items-center gap-3 shrink-0">
           <WaxSeal size={36} />
           <div className="whitespace-nowrap">
-            <span className="font-display text-base sm:text-lg font-bold tracking-wider text-[#e8cf96] block">
-              The Chronicler&apos;s Archive
+            <span className="font-display text-xl sm:text-2xl font-bold tracking-wider text-[#e8cf96] block">
+              Viggy&apos;s Archive
             </span>
             <span className="text-[11px] tracking-widest uppercase text-[#9e8f77] hidden md:block">
               D&amp;D Guild Noticeboard &amp; Lore Ledger

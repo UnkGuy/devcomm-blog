@@ -23,6 +23,15 @@ export function MarkdownEditor() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const plainTextLength = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const temp = document.createElement('div');
+      temp.innerHTML = description;
+      return temp.textContent?.length || 0;
+    }
+    return description.replace(/<[^>]*>?/gm, '').length;
+  }, [description]);
+
   const { uniqueTags, hasDuplicates } = useMemo(() => {
     const rawList = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
     const seen = new Set<string>();
@@ -128,7 +137,7 @@ export function MarkdownEditor() {
 
         <div className="space-y-1.5">
           <label className="block font-display text-xs uppercase tracking-widest font-semibold text-[#c8aa6e]">
-            Realm Tags (Comma-Separated)
+            Realm Tags (Max 5 • 24 chars each)
           </label>
           <input
             name="tags"
@@ -153,8 +162,8 @@ export function MarkdownEditor() {
             <label className="block font-display text-xs uppercase tracking-widest font-semibold text-[#c8aa6e]">
               Scroll Description / Lore *
             </label>
-            <span className={`font-mono text-xs ${description.length >= MAX_DESC_LENGTH ? 'text-[#f87171] font-bold' : 'text-[#8c7b65]'}`}>
-              {description.length.toLocaleString()} / {MAX_DESC_LENGTH.toLocaleString()} chars
+            <span className={`font-mono text-xs ${plainTextLength >= MAX_DESC_LENGTH ? 'text-[#f87171] font-bold' : 'text-[#8c7b65]'}`}>
+              {plainTextLength.toLocaleString()} / {MAX_DESC_LENGTH.toLocaleString()} chars
             </span>
           </div>
           <RichTextEditor content={description} onChange={setDescription} onError={setError} />
