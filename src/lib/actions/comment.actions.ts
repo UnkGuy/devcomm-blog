@@ -8,7 +8,7 @@ export async function addCommentAction(
   content: string,
   postSlug: string,
   parentId: string | null = null,
-  skillCheck?: { skill: string; modifier: number } | null
+  skillCheck?: { skill: string } | null
 ) {
   const supabase = await createClient();
   const {
@@ -24,20 +24,19 @@ export async function addCommentAction(
     return { error: 'Comment cannot be empty.' };
   }
 
-  // Inject a server-verified dice roll if the user requested one
+  let rollValue: number | undefined;
+
+  // Inject a server-verified pure 1d20 dice roll
   if (skillCheck) {
-    const baseRoll = Math.floor(Math.random() * 20) + 1;
-    const total = baseRoll + skillCheck.modifier;
-    const modString =
-      skillCheck.modifier >= 0 ? `+${skillCheck.modifier}` : `${skillCheck.modifier}`;
+    rollValue = Math.floor(Math.random() * 20) + 1;
     const rollType =
-      baseRoll === 20
-        ? ' **(Natural 20!)**'
-        : baseRoll === 1
+      rollValue === 20
+        ? ' **(Critical Success!)**'
+        : rollValue === 1
         ? ' **(Critical Fail!)**'
         : '';
 
-    finalContent += `\n\n> 🎲 **${skillCheck.skill} Check**: Rolled **${total}** *(1d20${modString} ➔ ${baseRoll}${rollType})*`;
+    finalContent += `\n\n> 🎲 **${skillCheck.skill} Check**: Rolled **${rollValue}**${rollType}`;
   }
 
   const { data, error } = await supabase
@@ -67,7 +66,7 @@ export async function addCommentAction(
 
   revalidatePath(`/post/${postSlug}`);
   revalidatePath('/');
-  return { data };
+  return { data, rollResult: rollValue };
 }
 
 export async function deleteCommentAction(commentId: string, postSlug: string) {
