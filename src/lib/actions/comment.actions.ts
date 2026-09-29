@@ -36,7 +36,7 @@ export async function addCommentAction(
         ? ' **(Critical Fail!)**'
         : '';
 
-    finalContent += `\n\n> 🎲 **${skillCheck.skill} Check**: Rolled **${rollValue}**${rollType}`;
+    finalContent += `\n> 🎲 **${skillCheck.skill} Check**: Rolled **${rollValue}**${rollType}`;
   }
 
   const { data, error } = await supabase

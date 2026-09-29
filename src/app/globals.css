@@ -111,7 +111,7 @@ code, pre, .font-mono {
 .lore-content h2,
 .lore-content h3 {
   font-family: var(--font-cinzel), serif;
-  color: #1a0f05;
+  color: inherit;
   font-weight: 700;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
@@ -249,3 +249,7 @@ code, pre, .font-mono {
 .animate-nat1 {
   animation: nat1-fail 0.6s ease-out forwards;
 }
+/* Restore List Styles for Lore Content */
+.lore-content ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; }
+.lore-content ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 1rem; }
+.lore-content li { margin-bottom: 0.25rem; }

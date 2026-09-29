@@ -82,7 +82,7 @@ export default function LoginPage() {
             <Input
               name="username"
               label="Adventurer Name (Username)"
-              placeholder="e.g. GaleOfWaterdeep"
+              placeholder="e.g. Quack the Quacker"
               required
             />
           )}
