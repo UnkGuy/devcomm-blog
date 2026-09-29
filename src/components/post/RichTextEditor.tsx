@@ -8,7 +8,7 @@ import Youtube from '@tiptap/extension-youtube';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
-  Bold, Italic, Heading2, Quote, List, ListOrdered, ImageIcon, Film, Link2
+  Bold, Italic, Heading2, Quote, List, ListOrdered, ImageIcon, Film, Link2, Dices
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -92,7 +92,7 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
     const previousUrl = editor?.getAttributes('link').href;
     const url = prompt('URL:', previousUrl);
     
-    if (url === null) return; // cancelled
+    if (url === null) return;
     if (url === '') {
       editor?.chain().focus().extendMarkRange('link').unsetLink().run();
       return;
@@ -100,11 +100,17 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
     editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
+  const addDiceRoll = useCallback(() => {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const rollType = roll === 20 ? ' *(Critical Success!)*' : roll === 1 ? ' *(Critical Fail!)*' : '';
+    // Inserts a stylized blockquote into the TipTap editor
+    editor?.chain().focus().setBlockquote().insertContent(`🎲 <strong>Author's Roll (1d20)</strong>: ${roll}${rollType}`).run();
+  }, [editor]);
+
   if (!editor) return null;
 
   return (
     <div className="border border-[#6e552f] overflow-hidden flex flex-col">
-      {/* Editor Toolbar */}
       <div className="flex items-center gap-1 flex-wrap bg-[#14100d] px-2 py-1.5 border-b border-[#6e552f]">
         <ToolbarBtn icon={<Bold className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold" />
         <ToolbarBtn icon={<Italic className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic" />
@@ -121,9 +127,21 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
         <ToolbarBtn icon={<Link2 className="w-4 h-4"/>} onClick={addLink} active={editor.isActive('link')} title="Add Link" />
         <ToolbarBtn icon={<ImageIcon className="w-4 h-4"/>} onClick={addImage} active={false} title="Upload Image" />
         <ToolbarBtn icon={<Film className="w-4 h-4"/>} onClick={addYoutube} active={false} title="Embed YouTube Video" />
+
+        <div className="w-px h-5 bg-[#6e552f]/50 mx-1" />
+
+        {/* New Dice Roll Button */}
+        <button
+          type="button"
+          onClick={addDiceRoll}
+          title="Roll 1d20"
+          className="p-1.5 text-[#d4c3a3] hover:text-[#e8cf96] hover:bg-[#2c2012] transition-colors flex items-center gap-1.5 cursor-pointer ml-auto border border-transparent hover:border-[#c8aa6e]"
+        >
+          <Dices className="w-4 h-4" />
+          <span className="text-[10px] font-display uppercase tracking-widest font-bold">Roll</span>
+        </button>
       </div>
 
-      {/* Editor Content Area */}
       <EditorContent editor={editor} className="flex-1 overflow-y-auto max-h-[600px] custom-scrollbar" />
     </div>
   );
