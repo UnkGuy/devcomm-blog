@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import {
   Trash2,
   Shield,
@@ -11,7 +13,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { CommentWithAuthor } from '@/types/database.types';
-import { formatRelativeDate } from '@/lib/utils';
+import { formatRelativeDate, formatMarkdownWithAutoLinks } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { UserPopover } from '@/components/user/UserPopover';
@@ -60,6 +62,33 @@ export function CommentItem({
   const isCommentByPostOwner = comment.author_id === postAuthorId;
   const isDeleting = deletingId === comment.id;
 
+  // Process comment content to automatically embed YouTube videos and image URLs
+  const renderedHtml = useMemo(() => {
+    if (!comment.content.trim()) return '';
+    const autoLinked = formatMarkdownWithAutoLinks(comment.content);
+    const rawHtml = marked.parse(autoLinked, {
+      async: false,
+      gfm: true,
+      breaks: true,
+    }) as string;
+
+    if (typeof window !== 'undefined') {
+      return DOMPurify.sanitize(rawHtml, {
+        ADD_TAGS: ['iframe', 'video'],
+        ADD_ATTR: [
+          'allow',
+          'allowfullscreen',
+          'frameborder',
+          'scrolling',
+          'target',
+          'rel',
+          'controls',
+        ],
+      });
+    }
+    return rawHtml;
+  }, [comment.content]);
+
   return (
     <div className="space-y-2.5">
       <div
@@ -67,7 +96,6 @@ export function CommentItem({
           depth > 0 ? 'bg-[#120e0b] border-[#6e552f]/80' : ''
         }`}
       >
-        {/* If this is a reply to another comment/reply, show @target indicator */}
         {depth > 0 && comment.parentAuthorUsername && (
           <div className="mb-2 flex items-center gap-1.5 text-xs text-[#c8aa6e] font-display uppercase tracking-wider">
             <CornerDownRight className="w-3.5 h-3.5 shrink-0" />
@@ -77,7 +105,6 @@ export function CommentItem({
 
         <div className="flex items-center justify-between gap-2 border-b border-[#6e552f]/40 pb-2.5 mb-3 flex-wrap">
           <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Clickable SpaceBattles-style Member Card Trigger */}
             <UserPopover
               userId={comment.author_id}
               username={comment.profiles?.username || 'Traveler'}
@@ -106,7 +133,6 @@ export function CommentItem({
             </span>
           </div>
 
-          {/* Action Buttons: Reply & Delete */}
           <div className="flex items-center gap-2">
             {currentUserId && (
               <button
@@ -134,11 +160,12 @@ export function CommentItem({
           </div>
         </div>
 
-        <p className="text-base text-[#e8dcc4] whitespace-pre-line leading-relaxed [overflow-wrap:anywhere]">
-          {comment.content}
-        </p>
+        {/* Embedded Comment Content */}
+        <div
+          className="text-base text-[#e8dcc4] whitespace-pre-line leading-relaxed [overflow-wrap:anywhere] lore-content"
+          dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        />
 
-        {/* Collapse/Expand toggle if this comment has replies */}
         {comment.replies.length > 0 && (
           <div className="mt-3 pt-2 border-t border-[#6e552f]/25 flex items-center justify-between">
             <button
@@ -168,7 +195,6 @@ export function CommentItem({
         )}
       </div>
 
-      {/* Inline Reply Form */}
       {isReplying && (
         <div className={depth === 0 ? 'pl-4 sm:pl-7' : ''}>
           <CommentForm
@@ -186,7 +212,6 @@ export function CommentItem({
         </div>
       )}
 
-      {/* Nested Replies: Only indent at depth 0 -> 1 so deep reply chains NEVER squish the layout */}
       {comment.replies.length > 0 && !repliesCollapsed && (
         <div
           className={

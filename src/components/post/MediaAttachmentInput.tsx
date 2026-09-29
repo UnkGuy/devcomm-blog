@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, Image as ImageIcon, Film, ExternalLink, X } from 'lucide-react';
+import { Upload, Image as ImageIcon, Film, ExternalLink, X, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { parseMediaUrl } from '@/lib/utils';
 
@@ -128,24 +128,31 @@ export function MediaAttachmentInput({
           />
         </label>
 
-        <div className="relative flex-1">
-          <input
-            name="cover_image_url"
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Or paste any Image URL, YouTube link, or web URL..."
-            className="w-full pl-3 pr-8 py-2 bg-[#14100d] border border-[#6e552f] text-sm text-[#f3e5c8] placeholder:text-[#786852] focus:outline-none focus:border-[#c8aa6e]"
-          />
-          {value && (
-            <button
-              type="button"
-              onClick={() => onChange('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8c7b65] hover:text-[#f3e5c8] cursor-pointer"
-              title="Clear media or link"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        <div className="relative flex-1 flex">
+          {value ? (
+            <div className="w-full pl-3 pr-3 py-2 bg-[#14100d] border border-[#6e552f] flex items-center justify-between">
+              <span className="text-sm text-[#86efac] flex items-center gap-1.5 font-medium truncate">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span className="truncate">Media Successfully Attached</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange('')}
+                className="text-[#fca5a5] hover:text-white cursor-pointer ml-2 shrink-0"
+                title="Remove attached media"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <input
+              name="cover_image_url"
+              type="text"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Or paste any Image URL, YouTube link, or web URL..."
+              className="w-full pl-3 pr-3 py-2 bg-[#14100d] border border-[#6e552f] text-sm text-[#f3e5c8] placeholder:text-[#786852] focus:outline-none focus:border-[#c8aa6e]"
+            />
           )}
         </div>
       </div>
