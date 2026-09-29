@@ -23,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Chronicler's Archive | DevComm Blog",
+  title: "Viggy's Archive | DevComm Blog",
   description: 'A D&D and Baldur’s Gate inspired blog application built with Next.js and Supabase.',
 };
 

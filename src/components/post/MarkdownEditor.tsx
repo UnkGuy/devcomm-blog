@@ -11,7 +11,7 @@ import { MediaAttachmentInput } from './MediaAttachmentInput';
 import { ScrollPreview } from './ScrollPreview';
 
 const MAX_TITLE_LENGTH = 100;
-const MAX_DESC_LENGTH = 5000;
+const MAX_DESC_LENGTH = 10000;
 const MAX_TAGS = 5;
 const MAX_SINGLE_TAG_LENGTH = 24;
 
