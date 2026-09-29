@@ -53,12 +53,15 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
   const addImage = useCallback(async () => {
     const input = document.createElement('input');
     input.type = 'file';
+    // Strictly enforcing images only (no videos)
     input.accept = 'image/jpeg,image/png,image/webp,image/gif';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) {
-        onError('Image must be under 5MB.');
+      
+      // Increased to 10MB max limit
+      if (file.size > 10 * 1024 * 1024) {
+        onError('Images must be under 10MB.');
         return;
       }
 
@@ -92,7 +95,7 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
     const previousUrl = editor?.getAttributes('link').href;
     const url = prompt('URL:', previousUrl);
     
-    if (url === null) return;
+    if (url === null) return; 
     if (url === '') {
       editor?.chain().focus().extendMarkRange('link').unsetLink().run();
       return;
@@ -103,8 +106,8 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
   const addDiceRoll = useCallback(() => {
     const roll = Math.floor(Math.random() * 20) + 1;
     const rollType = roll === 20 ? ' *(Critical Success!)*' : roll === 1 ? ' *(Critical Fail!)*' : '';
-    // Inserts a stylized blockquote into the TipTap editor
-    editor?.chain().focus().setBlockquote().insertContent(`🎲 <strong>Author's Roll (1d20)</strong>: ${roll}${rollType}`).run();
+    // Removed the Blockquote so it just inserts as a normal paragraph
+    editor?.chain().focus().insertContent(`<p>🎲 <strong>Author's Roll (1d20)</strong>: ${roll}${rollType}</p>`).run();
   }, [editor]);
 
   if (!editor) return null;
@@ -125,12 +128,11 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
         <div className="w-px h-5 bg-[#6e552f]/50 mx-1" />
         
         <ToolbarBtn icon={<Link2 className="w-4 h-4"/>} onClick={addLink} active={editor.isActive('link')} title="Add Link" />
-        <ToolbarBtn icon={<ImageIcon className="w-4 h-4"/>} onClick={addImage} active={false} title="Upload Image" />
+        <ToolbarBtn icon={<ImageIcon className="w-4 h-4"/>} onClick={addImage} active={false} title="Upload Image (Max 10MB)" />
         <ToolbarBtn icon={<Film className="w-4 h-4"/>} onClick={addYoutube} active={false} title="Embed YouTube Video" />
 
         <div className="w-px h-5 bg-[#6e552f]/50 mx-1" />
 
-        {/* New Dice Roll Button */}
         <button
           type="button"
           onClick={addDiceRoll}
