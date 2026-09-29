@@ -12,7 +12,7 @@ interface PostFeedProps {
   currentUserId?: string;
 }
 
-const SCROLLS_PER_PAGE = 10;
+const SCROLLS_PER_PAGE = 20;
 
 export function PostFeed({ initialPosts, tags, currentUserId }: PostFeedProps) {
   const [search, setSearch] = useState('');
@@ -20,7 +20,20 @@ export function PostFeed({ initialPosts, tags, currentUserId }: PostFeedProps) {
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [isTagMenuOpen, setIsTagMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [columnCount, setColumnCount] = useState(1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Measure window size to determine column count
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth >= 1024) setColumnCount(3);
+      else if (window.innerWidth >= 768) setColumnCount(2);
+      else setColumnCount(1);
+    }
+    handleResize(); // Set initial
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -55,10 +68,40 @@ export function PostFeed({ initialPosts, tags, currentUserId }: PostFeedProps) {
 
   const totalPages = Math.max(1, Math.ceil(filteredPosts.length / SCROLLS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
+  
   const paginatedPosts = useMemo(() => {
     const start = (safePage - 1) * SCROLLS_PER_PAGE;
     return filteredPosts.slice(start, start + SCROLLS_PER_PAGE);
   }, [filteredPosts, safePage]);
+
+  // GREEDY MASONRY ALGORITHM
+  const masonryColumns = useMemo(() => {
+    const cols = Array.from({ length: columnCount }, () => ({
+      height: 0,
+      posts: [] as PostWithDetails[],
+    }));
+
+    for (const post of paginatedPosts) {
+      // Estimate the height weight of the post
+      let weight = 200; // Base card padding/margins
+      if (post.cover_image_url) weight += 250; // Add weight if it has an image
+      weight += post.description.length * 0.4; // Approx height contribution of text
+
+      // Find the currently shortest column
+      let shortestIndex = 0;
+      for (let i = 1; i < columnCount; i++) {
+        if (cols[i].height < cols[shortestIndex].height) {
+          shortestIndex = i;
+        }
+      }
+
+      // Drop the post into the shortest column
+      cols[shortestIndex].posts.push(post);
+      cols[shortestIndex].height += weight;
+    }
+
+    return cols.map((col) => col.posts);
+  }, [paginatedPosts, columnCount]);
 
   return (
     <div className="space-y-6">
@@ -225,16 +268,20 @@ export function PostFeed({ initialPosts, tags, currentUserId }: PostFeedProps) {
         </div>
       </div>
 
-      {/* Asymmetrical 2-Column Masonry Noticeboard */}
+      {/* Balanced Flex Masonry Noticeboard */}
       {paginatedPosts.length > 0 ? (
         <>
-          <div className="columns-1 md:columns-2 gap-6">
-            {paginatedPosts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                currentUserId={currentUserId}
-              />
+          <div className="flex gap-6 items-start">
+            {masonryColumns.map((columnPosts, idx) => (
+              <div key={idx} className="flex-1 flex flex-col space-y-6">
+                {columnPosts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    currentUserId={currentUserId}
+                  />
+                ))}
+              </div>
             ))}
           </div>
 
