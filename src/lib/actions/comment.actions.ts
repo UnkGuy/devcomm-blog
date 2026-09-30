@@ -23,6 +23,11 @@ export async function addCommentAction(
   if (!finalContent) {
     return { error: 'Comment cannot be empty.' };
   }
+  
+  // Security Fix: Enforce character limit
+  if (finalContent.length > 2000) {
+    return { error: 'Your whisper is too long. Please keep it under 2,000 characters.' };
+  }
 
   let rollValue: number | undefined;
 
@@ -77,6 +82,34 @@ export async function deleteCommentAction(commentId: string, postSlug: string) {
 
   if (!user) {
     return { error: 'Unauthorized: Please sign in.' };
+  }
+
+  // Security Fix: Fetch the comment and its parent post to verify ownership
+  const { data: comment, error: fetchError } = await supabase
+    .from('comments')
+    .select('author_id, post_id, posts(author_id)')
+    .eq('id', commentId)
+    .single();
+
+  if (fetchError || !comment) {
+    return { error: 'Comment not found.' };
+  }
+
+  // Security Fix: Fetch user role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const isCommentAuthor = comment.author_id === user.id;
+  // Supabase joins foreign tables as objects or arrays. In a many-to-one, it's an object.
+  const isPostAuthor = (comment.posts as any)?.author_id === user.id;
+  const isAdmin = profile?.role === 'admin';
+
+  // Security Fix: Strict Authorization Gate
+  if (!isCommentAuthor && !isPostAuthor && !isAdmin) {
+    return { error: 'Forbidden: You do not have permission to burn this whisper.' };
   }
 
   const { error } = await supabase

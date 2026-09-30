@@ -11,43 +11,44 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: rawPosts } = await supabase
-    .from('posts')
-    .select(
-      `
-      *,
-      profiles:author_id (
-        id,
-        username,
-        avatar_url,
-        role
-      ),
-      post_tags (
-        tags (
+  // Execute all independent database queries simultaneously to prevent an SSR Waterfall
+  const [
+    { data: { user } },
+    { data: rawPosts },
+    { data: tags }
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('posts')
+      .select(`
+        *,
+        profiles:author_id (
           id,
-          name,
-          slug
+          username,
+          avatar_url,
+          role
+        ),
+        post_tags (
+          tags (
+            id,
+            name,
+            slug
+          )
+        ),
+        post_likes (
+          user_id
+        ),
+        comments (
+          count
         )
-      ),
-      post_likes (
-        user_id
-      ),
-      comments (
-        count
-      )
-    `
-    )
-    .eq('is_published', true)
-    .order('created_at', { ascending: false });
-
-  const { data: tags } = await supabase
-    .from('tags')
-    .select('*')
-    .order('name', { ascending: true });
+      `)
+      .eq('is_published', true)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('tags')
+      .select('*')
+      .order('name', { ascending: true })
+  ]);
 
   const posts = (rawPosts as unknown as PostWithDetails[]) || [];
 
