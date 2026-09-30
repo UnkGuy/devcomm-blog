@@ -163,18 +163,20 @@ export default async function AdminAuditLogsPage({ searchParams }: AdminPageProp
 
           <div className="sm:col-span-3">
             <select
-              name="action"
-              defaultValue={actionFilter}
-              className="w-full px-3 py-2 bg-[#14100d] border border-[#6e552f] text-xs sm:text-sm text-[#f3e5c8] focus:outline-none focus:border-[#c8aa6e]"
-            >
-              <option value="">All Actions</option>
-              <option value="INSERT">INSERT</option>
-              <option value="UPDATE">UPDATE</option>
-              <option value="DELETE">DELETE</option>
-              <option value="USER_LOGIN">USER_LOGIN</option>
-              <option value="USER_SIGNUP">USER_SIGNUP</option>
-              <option value="USER_LOGOUT">USER_LOGOUT</option>
-            </select>
+  name="action"
+  defaultValue={actionFilter}
+  className="w-full px-3 py-2 bg-[#14100d] border border-[#6e552f] text-xs sm:text-sm text-[#f3e5c8] focus:outline-none focus:border-[#c8aa6e]"
+>
+  <option value="">All Actions</option>
+  <option value="INSERT">INSERT</option>
+  <option value="UPDATE">UPDATE</option>
+  <option value="DELETE">DELETE</option>
+  <option value="USER_LOGIN">USER_LOGIN</option>
+  <option value="USER_SIGNUP">USER_SIGNUP</option>
+  <option value="USER_LOGOUT">USER_LOGOUT</option>
+  {/* Add this new option below */}
+  <option value="USER_REPORTED_ISSUE">USER_REPORTED_ISSUE</option>
+</select>
           </div>
 
           <div className="sm:col-span-2">
@@ -211,29 +213,31 @@ export default async function AdminAuditLogsPage({ searchParams }: AdminPageProp
         {/* Paginated Audit Log Entries (Max 20 per page) */}
         <div className="mt-4 space-y-3">
           {paginatedLogs.length > 0 ? (
-            paginatedLogs.map((log) => {
-              const isDelete = log.action.includes('DELETE');
-              const isInsert =
-                log.action.includes('INSERT') || log.action.includes('SIGNUP');
+  paginatedLogs.map((log) => {
+    const isDelete = log.action.includes('DELETE');
+    const isInsert = log.action.includes('INSERT') || log.action.includes('SIGNUP');
+    const isIssue = log.action === 'USER_REPORTED_ISSUE'; // Add this check
 
-              return (
-                <div
-                  key={log.id}
-                  className="bg-[#0b0908] border border-[#6e552f]/70 p-4 space-y-2"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <span
-                        className={`font-mono text-xs font-bold px-2 py-0.5 border ${
-                          isDelete
-                            ? 'bg-[#450a0a] text-[#fca5a5] border-[#dc2626]'
-                            : isInsert
-                            ? 'bg-[#142615] text-[#bbf7d0] border-[#22c55e]'
-                            : 'bg-[#2c2012] text-[#fde68a] border-[#c8aa6e]'
-                        }`}
-                      >
-                        {log.action}
-                      </span>
+    return (
+      <div
+        key={log.id}
+        className="bg-[#0b0908] border border-[#6e552f]/70 p-4 space-y-2"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span
+              className={`font-mono text-xs font-bold px-2 py-0.5 border ${
+                isIssue
+                  ? 'bg-[#422006] text-[#fdba74] border-[#f97316]' // Amber warning for issues
+                  : isDelete
+                  ? 'bg-[#450a0a] text-[#fca5a5] border-[#dc2626]'
+                  : isInsert
+                  ? 'bg-[#142615] text-[#bbf7d0] border-[#22c55e]'
+                  : 'bg-[#2c2012] text-[#fde68a] border-[#c8aa6e]'
+              }`}
+            >
+              {log.action}
+            </span>
 
                       <span className="font-mono text-xs text-[#c8aa6e] inline-flex items-center gap-1">
                         <Database className="w-3.5 h-3.5" />
