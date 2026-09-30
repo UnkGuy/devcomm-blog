@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { signOutAction } from '@/lib/actions/post.actions';
 import { WaxSeal } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { ProfileModal } from './ProfileModal';
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -11,12 +12,17 @@ export default async function Navbar() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let profile: { username: string; role: 'user' | 'admin' } | null = null;
+  let profile: {
+    username: string;
+    bio: string | null;
+    avatar_url: string | null;
+    role: 'user' | 'admin';
+  } | null = null;
 
   if (user) {
     const { data } = await supabase
       .from('profiles')
-      .select('username, role')
+      .select('username, bio, avatar_url, role')
       .eq('id', user.id)
       .maybeSingle();
     profile = data;
@@ -24,22 +30,20 @@ export default async function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#6e552f] bg-[#0e0b09]/95 backdrop-blur-sm">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-4">
-        {/* Brand Crest - shrink-0 & whitespace-nowrap prevents title wrapping */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-3 shrink-0">
           <WaxSeal size={36} />
           <div className="whitespace-nowrap">
-            <span className="font-display text-base sm:text-lg font-bold tracking-wider text-[#e8cf96] block">
-              The Chronicler&apos;s Archive
+            <span className="font-display text-xl sm:text-2xl font-bold tracking-wider text-[#e8cf96] block">
+              Viggy&apos;s Archive
             </span>
             <span className="text-[11px] tracking-widest uppercase text-[#9e8f77] hidden md:block">
-              Guild Noticeboard &amp; Lore Ledger
+              D&amp;D Guild Noticeboard &amp; Lore Ledger
             </span>
           </div>
         </Link>
 
-        {/* Navigation Links */}
-        <nav className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <nav className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <Link
             href="/"
             className="font-display text-xs uppercase tracking-wider text-[#d4c3a3] hover:text-[#e8cf96] hover:bg-[#1c150e] px-2.5 py-1.5 border border-transparent hover:border-[#6e552f]/60 transition-colors flex items-center gap-1.5 whitespace-nowrap"
@@ -60,6 +64,15 @@ export default async function Navbar() {
                   <span className="hidden sm:inline">Audit Logs</span>
                 </Link>
               )}
+                <Link
+                  href={`/scribe/${encodeURIComponent(
+                    profile?.username || user.email?.split('@')[0] || 'Adventurer'
+                  )}`}
+                  className="font-display text-xs uppercase tracking-wider text-[#d4c3a3] hover:text-[#e8cf96] hover:bg-[#1c150e] px-2.5 py-1.5 border border-transparent hover:border-[#6e552f]/60 transition-colors hidden sm:flex items-center gap-1.5 whitespace-nowrap"
+                  title="View Your Personal Noticeboard & Scroll History"
+                >
+                  <span>My Ledger</span>
+                </Link>
 
               <Link
                 href="/create"
@@ -69,14 +82,13 @@ export default async function Navbar() {
                 <span>Scribe Scroll</span>
               </Link>
 
-              <div className="hidden xl:flex items-center gap-2 pl-2.5 ml-1 border-l border-[#6e552f]/60 whitespace-nowrap">
-                <span className="text-sm text-[#e8dcc4] max-w-[130px] truncate">
-                  {profile?.username || user.email?.split('@')[0]}
-                </span>
-                <span className="font-display text-[10px] uppercase tracking-widest px-2 py-0.5 border border-[#6e552f] bg-[#1c1612] text-[#c8aa6e]">
-                  {profile?.role === 'admin' ? 'Archivist' : 'Adventurer'}
-                </span>
-              </div>
+              <ProfileModal
+                userId={user.id}
+                initialUsername={profile?.username || user.email?.split('@')[0] || 'Adventurer'}
+                initialBio={profile?.bio || null}
+                initialAvatarUrl={profile?.avatar_url || null}
+                role={profile?.role || 'user'}
+              />
 
               <form action={signOutAction}>
                 <Button type="submit" variant="obsidian" size="sm" title="Sign Out">

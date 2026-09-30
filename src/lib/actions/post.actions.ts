@@ -3,11 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { slugify } from '@/lib/utils';
-
-// ==========================================
-// AUTHENTICATION & CUSTOM AUDIT LOGGING
-// ==========================================
+import { slugify, extractFirstMediaUrl, normalizeUrl } from '@/lib/utils';
 
 export async function signInAction(formData: FormData) {
   const email = (formData.get('email') as string)?.trim();
@@ -50,30 +46,15 @@ export async function signUpAction(formData: FormData) {
     return { error: 'All fields are required.' };
   }
 
-  if (username.length < 3) {
-    return { error: 'Username must be at least 3 characters.' };
-  }
-
   const supabase = await createClient();
 
-  // Check if username is already taken
-  const { data: existingUser } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('username', username)
-    .maybeSingle();
-
-  if (existingUser) {
-    return { error: 'Username is already taken. Please choose another.' };
-  }
-
+  // Sign up with email confirmation redirect
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        username,
-      },
+      data: { username },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
     },
   });
 
@@ -81,14 +62,13 @@ export async function signUpAction(formData: FormData) {
     return { error: error.message };
   }
 
-  if (data.user) {
-    await supabase.from('audit_logs').insert({
-      actor_id: data.user.id,
-      action: 'USER_SIGNUP',
-      table_name: 'auth.users',
-      record_id: data.user.id,
-      metadata: { email, username },
-    });
+  // If Supabase has email confirmation turned on, data.session will be null
+  if (data.user && !data.session) {
+    return {
+      success: true,
+      needsConfirmation: true,
+      message: 'A guild confirmation courier has been dispatched to your email address! Please click the ink-stamped link to verify your identity.',
+    };
   }
 
   revalidatePath('/', 'layout');
@@ -116,9 +96,51 @@ export async function signOutAction() {
   redirect('/login');
 }
 
-// ==========================================
-// POST ACTIONS (CREATE, DELETE, LIKE)
-// ==========================================
+export async function updateProfileAction(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'You must be signed in to update your profile.' };
+  }
+
+  const username = (formData.get('username') as string)?.trim();
+  const bio = (formData.get('bio') as string)?.trim() || null;
+  const avatarUrl = (formData.get('avatar_url') as string)?.trim() || null;
+
+  if (!username || username.length < 3 || username.length > 24) {
+    return { error: 'Adventurer name must be between 3 and 24 characters.' };
+  }
+
+  const { data: conflict } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .neq('id', user.id)
+    .maybeSingle();
+
+  if (conflict) {
+    return { error: 'That Adventurer name is already claimed.' };
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      username,
+      bio,
+      avatar_url: avatarUrl,
+    })
+    .eq('id', user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath('/', 'layout');
+  return { success: true };
+}
 
 export async function createPostAction(formData: FormData) {
   const supabase = await createClient();
@@ -132,16 +154,37 @@ export async function createPostAction(formData: FormData) {
 
   const title = (formData.get('title') as string)?.trim();
   const description = (formData.get('description') as string)?.trim();
-  const coverImageUrl = (formData.get('cover_image_url') as string)?.trim() || null;
+  const rawCoverUrl = (formData.get('cover_image_url') as string)?.trim() || '';
   const rawTags = (formData.get('tags') as string) || '';
 
   if (!title || !description) {
     return { error: 'Both a title and description are required.' };
   }
 
+  // Ensure the author has a profile record so foreign key constraints never fail
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!existingProfile) {
+    const fallbackUsername =
+      (user.user_metadata?.username as string) ||
+      user.email?.split('@')[0] ||
+      `adventurer_${user.id.slice(0, 6)}`;
+    await supabase.from('profiles').insert({
+      id: user.id,
+      username: fallbackUsername.slice(0, 24),
+    });
+  }
+
+  const coverImageUrl = rawCoverUrl
+    ? normalizeUrl(rawCoverUrl)
+    : extractFirstMediaUrl(description);
+
   const slug = slugify(title);
 
-  // 1. Insert the Post (DB trigger automatically logs this INSERT in audit_logs)
   const { data: post, error: postError } = await supabase
     .from('posts')
     .insert({
@@ -149,7 +192,7 @@ export async function createPostAction(formData: FormData) {
       title,
       slug,
       description,
-      cover_image_url: coverImageUrl,
+      cover_image_url: coverImageUrl || null,
       is_published: true,
     })
     .select('id, slug')
@@ -159,18 +202,19 @@ export async function createPostAction(formData: FormData) {
     return { error: postError?.message || 'Failed to create post.' };
   }
 
-  // 2. Process Optional Tags (M:N relationship via tags & post_tags)
   const tagNames = rawTags
     .split(',')
     .map((t) => t.trim().toLowerCase())
     .filter((t) => t.length > 0)
     .slice(0, 5);
 
+  const seenSlugs = new Set<string>();
+
   for (const tagName of tagNames) {
     const tagSlug = tagName.replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
-    if (!tagSlug) continue;
+    if (!tagSlug || seenSlugs.has(tagSlug)) continue;
+    seenSlugs.add(tagSlug);
 
-    // Upsert or fetch existing tag
     let tagId: string | null = null;
     const { data: existingTag } = await supabase
       .from('tags')
@@ -185,20 +229,22 @@ export async function createPostAction(formData: FormData) {
         .from('tags')
         .insert({ name: tagName, slug: tagSlug })
         .select('id')
-        .single();
+        .maybeSingle();
       if (newTag) tagId = newTag.id;
     }
 
     if (tagId) {
-      await supabase.from('post_tags').insert({
-        post_id: post.id,
-        tag_id: tagId,
-      });
+      await supabase
+        .from('post_tags')
+        .upsert(
+          { post_id: post.id, tag_id: tagId },
+          { onConflict: 'post_id,tag_id', ignoreDuplicates: true }
+        );
     }
   }
 
   revalidatePath('/');
-  redirect(`/post/${post.slug}`);
+  return { success: true, slug: post.slug };
 }
 
 export async function deletePostAction(postId: string) {
@@ -221,7 +267,10 @@ export async function deletePostAction(postId: string) {
   redirect('/');
 }
 
-export async function togglePostLikeAction(postId: string, pathToRevalidate: string) {
+export async function togglePostLikeAction(
+  postId: string,
+  pathToRevalidate: string
+) {
   const supabase = await createClient();
   const {
     data: { user },

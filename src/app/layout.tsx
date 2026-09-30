@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Cinzel, EB_Garamond, JetBrains_Mono } from 'next/font/google';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { FaviconRandomizer } from '@/components/layout/FaviconRandomizer';
 import './globals.css';
 
 const cinzel = Cinzel({
@@ -23,8 +24,11 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Chronicler's Archive | DevComm Blog",
-  description: 'A D&D and Baldur’s Gate inspired blog application built with Next.js and Supabase.',
+  title: "Viggy's Archive",
+  description: "Hand-Crafted for the Tabletop Community",
+  icons: {
+    icon: '/assets/images/wax-seal-red.png', // Fallback default
+  },
 };
 
 export default function RootLayout({
@@ -38,6 +42,7 @@ export default function RootLayout({
       className={`${cinzel.variable} ${garamond.variable}${jetbrainsMono.variable}`}
     >
       <body className="min-h-screen flex flex-col antialiased">
+        <FaviconRandomizer />
         <Navbar />
         <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8">
           {children}

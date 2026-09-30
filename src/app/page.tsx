@@ -11,58 +11,58 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: rawPosts } = await supabase
-    .from('posts')
-    .select(
-      `
-      *,
-      profiles:author_id (
-        id,
-        username,
-        avatar_url,
-        role
-      ),
-      post_tags (
-        tags (
+  // Execute all independent database queries simultaneously to prevent an SSR Waterfall
+  const [
+    { data: { user } },
+    { data: rawPosts },
+    { data: tags }
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('posts')
+      .select(`
+        *,
+        profiles:author_id (
           id,
-          name,
-          slug
+          username,
+          avatar_url,
+          role
+        ),
+        post_tags (
+          tags (
+            id,
+            name,
+            slug
+          )
+        ),
+        post_likes (
+          user_id
+        ),
+        comments (
+          count
         )
-      ),
-      post_likes (
-        user_id
-      ),
-      comments (
-        count
-      )
-    `
-    )
-    .eq('is_published', true)
-    .order('created_at', { ascending: false });
-
-  const { data: tags } = await supabase
-    .from('tags')
-    .select('*')
-    .order('name', { ascending: true });
+      `)
+      .eq('is_published', true)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('tags')
+      .select('*')
+      .order('name', { ascending: true })
+  ]);
 
   const posts = (rawPosts as unknown as PostWithDetails[]) || [];
 
   return (
     <div className="space-y-8">
-      {/* Clean Color-Only Title Header (No Header Image) */}
       <section className="bg3-panel p-6 sm:p-8 text-center">
         <p className="font-display text-xs uppercase tracking-[0.25em] text-[#c8aa6e]">
-          Baldur&apos;s Gate &amp; Realm Dispatches
+          Tales from the Material Plane &bull; Guild Dispatches
         </p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-[#f3e5c8] mt-2">
           The Adventurer&apos;s Noticeboard
         </h1>
         <p className="text-base text-[#b8a68e] max-w-2xl mx-auto mt-2">
-          Peruse the latest quest reports, arcane findings, and tavern tales inscribed by fellow travelers.
+          Peruse the latest quest reports, arcane research, and tavern chronicles inscribed by fellow travelers across the realm.
         </p>
         <GoldDivider />
         <div className="mt-2">
@@ -75,7 +75,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2-Column Noticeboard Feed */}
       <PostFeed
         initialPosts={posts}
         tags={tags || []}
