@@ -13,7 +13,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { CommentWithAuthor } from '@/types/database.types';
-import { formatRelativeDate, formatMarkdownWithAutoLinks, getAvatarFallback } from '@/lib/utils';
+import { formatRelativeDate, processHtmlAutoLinks, getAvatarFallback } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { UserPopover } from '@/components/user/UserPopover';
@@ -64,15 +64,20 @@ export function CommentItem({
 
   const renderedHtml = useMemo(() => {
     if (!comment.content.trim()) return '';
-    const autoLinked = formatMarkdownWithAutoLinks(comment.content);
-    const rawHtml = marked.parse(autoLinked, {
+    
+    // 1. Convert plain text and bare URLs to standard HTML & <a> tags
+    const rawHtml = marked.parse(comment.content, {
       async: false,
       gfm: true,
       breaks: true,
     }) as string;
 
+    // 2. Intercept those <a> tags and morph them into embeds via our optimized util
+    const embeddedHtml = processHtmlAutoLinks(rawHtml);
+
+    // 3. Sanitize for security
     if (typeof window !== 'undefined') {
-      return DOMPurify.sanitize(rawHtml, {
+      return DOMPurify.sanitize(embeddedHtml, {
         ADD_TAGS: ['iframe', 'video'],
         ADD_ATTR: [
           'allow',
@@ -85,7 +90,7 @@ export function CommentItem({
         ],
       });
     }
-    return rawHtml;
+    return embeddedHtml;
   }, [comment.content]);
 
   return (
@@ -143,7 +148,6 @@ export function CommentItem({
           </div>
         </div>
 
-        {/* Removed whitespace-pre-line to fix the huge gap bug */}
         <div
           className="text-[15px] sm:text-base text-[#e8dcc4] leading-relaxed [overflow-wrap:anywhere] lore-content"
           dangerouslySetInnerHTML={{ __html: renderedHtml }}

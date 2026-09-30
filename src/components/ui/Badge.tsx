@@ -47,30 +47,37 @@ interface GoldDividerProps {
   className?: string;
 }
 
+interface GoldDividerProps {
+  variant?: 'gold' | 'parchment';
+  className?: string;
+}
+
 export function GoldDivider({
   variant = 'gold',
   className,
 }: GoldDividerProps) {
   if (variant === 'parchment') {
     return (
-      <div className={cn('my-6 flex justify-center select-none', className)}>
+      <div className={cn('my-6 flex justify-center w-full select-none', className)}>
         <img
           src="/assets/images/parchment-divider.png"
           alt=""
           aria-hidden="true"
-          className="h-20 sm:h-28 w-full max-w-3xl object-contain mix-blend-multiply opacity-90"
+          // object-cover acts as a native CSS crop. It forces the image into this 
+          // exact bounding box, chopping off the invisible top/bottom padding.
+          className="w-64 sm:w-96 h-8 sm:h-12 object-cover object-center mix-blend-multiply opacity-90 pointer-events-none"
         />
       </div>
     );
   }
 
   return (
-    <div className={cn('my-6 flex justify-center select-none', className)}>
+    <div className={cn('my-6 flex justify-center w-full select-none', className)}>
       <img
         src="/assets/images/divider-gold.png"
         alt=""
         aria-hidden="true"
-        className="h-16 sm:h-24 w-full max-w-3xl object-contain mix-blend-screen opacity-95"
+        className="w-64 sm:w-96 h-8 sm:h-12 object-cover object-center mix-blend-screen opacity-95 pointer-events-none"
       />
     </div>
   );
