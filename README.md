@@ -10,7 +10,7 @@ Designed to reject the sterile feel of modern corporate UI, this application fea
 
 **Viggy's Archive** was made as a specialized blogging web application with heavy inspiration from tabletop role-playing games (TTRPGs) like Dungeons & Dragons, aiming to capture the tactile magic of physical campaign diaries. The design choice of the masonry feed was taken from platforms like Pinterest to create a dynamic, non-symmetric "Adventurer's Noticeboard" aesthetic. 
 
-This was made with the hopes of elevating the developer's knowledge in the usage of newer, more modern technologies such as **Next.js** (App Router) for the main framework, paired with **Tailwind CSS** for rapid, template-free custom design, and **Supabase** as the main PostgreSQL database and authentication provider. Deployed on **Vercel**.
+A practical demo leveraging Next.js (App Router), Tailwind CSS, and Supabase (Postgres + auth), with deployment to Vercel.
 
 *"We are all scribes of our own campaigns. This archive simply gives those stories a permanent home."*
 
