@@ -19,13 +19,14 @@ export default function AboutPage() {
 
         <div className="mt-6 text-left space-y-5 text-[#d4c3a3] leading-relaxed text-base sm:text-lg">
           <p>
-            Viggy&apos;s Archive began as a personal development project, born from a simple desire: to create a space for tabletop enthusiasts that actually <em>feels</em> like it belongs in a fantasy world. 
+            Viggy&apos;s Archive was made as a specialized blogging web application with heavy inspiration from tabletop role-playing games like Dungeons &amp; Dragons. To capture the chaotic, authentic feel of a tavern noticeboard, the design utilizes a unique, non-symmetric masonry grid inspired by platforms like Pinterest.
           </p>
           <p>
-            As both a developer and a D&amp;D player, I was tired of generic, ultra-modern social platforms. I wanted a digital tavern—a Noticeboard where adventurers could pin quest logs, share lore, and debate rules without feeling like they were stuck in a sterile corporate app.
+            As both a developer and a D&amp;D player, I was tired of generic, ultra-modern social platforms. I wanted a digital tavern—a space where adventurers could pin quest logs, share lore, and debate rules without feeling like they were stuck in a sterile corporate app.
           </p>
           <p>
-            Built entirely from the ground up without generic templates, this archive relies on custom-forged obsidian panels and deterministic parchment layouts to recreate the authentic, tactile weight of a physical campaign diary.          </p>
+            Built entirely from the ground up without generic templates, this project was made with the hopes of elevating my knowledge in modern web development. It leverages <strong>Next.js</strong> for the main framework, paired with <strong>Tailwind CSS</strong> for rapid, custom design, and <strong>Supabase</strong> as the secure database backbone. It is proudly deployed on <strong>Vercel</strong>.
+          </p>
           <p className="italic text-[#e8cf96] pt-4 border-t border-[#6e552f]/40">
             "We are all scribes of our own campaigns. This archive simply gives those stories a permanent home."
           </p>
