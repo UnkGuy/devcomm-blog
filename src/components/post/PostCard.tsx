@@ -27,8 +27,12 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
 
   const parchmentClass = getParchmentClass(post.id);
 
-  // Safely strip ALL HTML tags and extra spaces from the TipTap output for the preview
-  const strippedHtml = post.description.replace(/<\/p>|<br\s*\/?>/gi, '\n').replace(/<[^>]*>?/gm, '').trim();
+  // Safely replace block tags with newlines before stripping HTML so excerpts maintain spacing
+  const strippedHtml = post.description
+    .replace(/<\/(p|div|h[1-6])>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]*>?/gm, '')
+    .trim();
   
   const dynamicPreviewLimit =
     strippedHtml.length < 180
@@ -81,6 +85,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
           </h2>
         </Link>
 
+        {/* whitespace-pre-wrap correctly renders the newlines we injected above */}
         <p className="mt-2.5 text-base text-[#2f2010] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap line-clamp-6">
           {excerpt}{strippedHtml.length > dynamicPreviewLimit ? '...' : ''}
         </p>

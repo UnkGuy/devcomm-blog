@@ -2,12 +2,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Feather, Sparkles, AlertCircle, X, ArrowDown } from 'lucide-react';
+import { Feather, Sparkles, X, ArrowDown } from 'lucide-react';
 import { createPostAction } from '@/lib/actions/post.actions';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
 import { ScrollPreview } from './ScrollPreview';
 import { RichTextEditor } from './RichTextEditor';
+import { MediaAttachmentInput } from './MediaAttachmentInput';
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_DESC_LENGTH = 10000;
@@ -18,11 +19,14 @@ export function MarkdownEditor() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [coverMediaUrl, setCoverMediaUrl] = useState('');
   const [description, setDescription] = useState('');
   const [tagWarning, setTagWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
+  // Safely grab true text length instead of HTML length
   const plainTextLength = useMemo(() => {
     if (typeof window !== 'undefined') {
       const temp = document.createElement('div');
@@ -32,18 +36,16 @@ export function MarkdownEditor() {
     return description.replace(/<[^>]*>?/gm, '').length;
   }, [description]);
 
-  const { uniqueTags, hasDuplicates } = useMemo(() => {
+  const { uniqueTags } = useMemo(() => {
     const rawList = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
     const seen = new Set<string>();
     const deduped: string[] = [];
-    let duplicateFound = false;
 
     for (const tag of rawList) {
       const lower = tag.toLowerCase();
-      if (seen.has(lower)) duplicateFound = true;
-      else { seen.add(lower); deduped.push(tag); }
+      if (!seen.has(lower)) { seen.add(lower); deduped.push(tag); }
     }
-    return { uniqueTags: deduped.slice(0, MAX_TAGS), hasDuplicates: duplicateFound };
+    return { uniqueTags: deduped.slice(0, MAX_TAGS) };
   }, [tagsInput]);
 
   function handleTagsChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -73,8 +75,7 @@ export function MarkdownEditor() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     
-    const strippedContent = description.replace(/<[^>]*>?/gm, '').trim();
-    if (!strippedContent && !description.includes('<img') && !description.includes('<iframe')) {
+    if (plainTextLength === 0 && !description.includes('<img') && !description.includes('<iframe')) {
       setError("Your scroll cannot be empty.");
       return;
     }
@@ -84,7 +85,7 @@ export function MarkdownEditor() {
 
     const formData = new FormData(e.currentTarget);
     formData.set('tags', uniqueTags.join(', '));
-    formData.set('cover_image_url', ''); 
+    formData.set('cover_image_url', coverMediaUrl.trim()); 
     formData.set('description', description);
 
     const result = await createPostAction(formData);
@@ -110,7 +111,7 @@ export function MarkdownEditor() {
             <span>Scribe&apos;s Inkwell</span>
           </h2>
           <p className="text-xs text-[#9e8f77] mt-0.5">
-            Rich text enabled. Upload images, adjust spacing, and paste links to automatically embed scrying visions.
+            Rich text enabled. Format text, upload a cover photo, and paste links to automatically embed media.
           </p>
         </div>
 
@@ -157,6 +158,13 @@ export function MarkdownEditor() {
           </div>
         </div>
 
+        <MediaAttachmentInput 
+          value={coverMediaUrl} 
+          onChange={setCoverMediaUrl} 
+          onError={setError} 
+          onUploadingChange={setUploadingMedia} 
+        />
+
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="block font-display text-xs uppercase tracking-widest font-semibold text-[#c8aa6e]">
@@ -174,16 +182,15 @@ export function MarkdownEditor() {
             <ArrowDown className="w-3.5 h-3.5 animate-bounce" />
             Live Preview Below
           </div>
-          <Button type="submit" variant="gold" size="lg" disabled={loading} className="w-full sm:w-auto">
+          <Button type="submit" variant="gold" size="lg" disabled={loading || uploadingMedia} className="w-full sm:w-auto">
             <Sparkles className="w-4 h-4" />
             <span>{loading ? 'Sealing Scroll...' : 'Seal & Publish Scroll'}</span>
           </Button>
         </div>
       </form>
 
-      {/* Stacked Preview Below */}
       <div className="pt-4">
-        <ScrollPreview title={title} uniqueTags={uniqueTags} coverMediaUrl="" description={description} />
+        <ScrollPreview title={title} uniqueTags={uniqueTags} coverMediaUrl={coverMediaUrl} description={description} />
       </div>
       <Toast message={error} type="error" onClose={() => setError(null)} />
     </div>

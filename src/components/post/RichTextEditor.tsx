@@ -3,16 +3,16 @@
 import React, { useCallback } from 'react';
 import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
-import Youtube from '@tiptap/extension-youtube';
-import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
-  Bold, Italic, Heading2, Quote, List, ListOrdered, ImageIcon, Film, Link2, Dices
+  Bold, Italic, Heading2, Quote, List, ListOrdered, Dices
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 
-// Custom TipTap Extension to allow saving Line Height and Letter Spacing attributes!
+// NOTE: no separate '@tiptap/extension-link' import.
+// Tiptap v3's StarterKit already bundles Link, so it is configured here.
+// autolink turns pasted URLs into links, which the preview/post page
+// then morph into embedded images and videos.
+
 const SpacingExtension = Extension.create({
   name: 'spacing',
   addGlobalAttributes() {
@@ -45,27 +45,26 @@ const SpacingExtension = Extension.create({
 interface RichTextEditorProps {
   content: string;
   onChange: (html: string) => void;
-  onError: (msg: string) => void;
+  onError?: (err: string | null) => void;
 }
 
-export function RichTextEditor({ content, onChange, onError }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      StarterKit.configure({
+        heading: { levels: [2, 3] },
+        link: {
+          openOnClick: false,
+          autolink: true,
+          HTMLAttributes: {
+            class: 'text-[#c8aa6e] underline hover:text-[#f3e5c8] transition-colors cursor-pointer',
+          },
+        },
+      }),
       SpacingExtension,
-      Image.configure({
-        HTMLAttributes: { class: 'fantasy-media-img max-h-[400px] w-auto mx-auto border border-[#6e552f] my-4 cursor-zoom-in' },
-      }),
-      Youtube.configure({
-        HTMLAttributes: { class: 'w-full aspect-video border border-[#6e552f] my-4' },
-      }),
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        HTMLAttributes: { class: 'text-[#c8aa6e] underline hover:text-[#f3e5c8] transition-colors cursor-pointer' },
-      }),
       Placeholder.configure({
-        placeholder: 'Inscribe your tale here... Paste an Imgur or YouTube link and it will automatically embed itself!',
+        placeholder: 'Inscribe your tale here... To add images or videos, just paste the URL link on its own line.',
         emptyEditorClass: 'is-editor-empty before:content-[attr(data-placeholder)] before:text-[#786852] before:float-left before:pointer-events-none',
       }),
     ],
@@ -80,99 +79,37 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
     },
   });
 
-  const addImage = useCallback(async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/jpeg,image/png,image/webp,image/gif';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      if (file.size > 10 * 1024 * 1024) {
-        onError('Images must be under 10MB.');
-        return;
-      }
-
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const ext = file.name.split('.').pop() || 'png';
-      const path = `${user.id}/inline-${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage.from('blog-media').upload(path, file);
-      if (uploadError) {
-        onError(uploadError.message);
-        return;
-      }
-
-      const { data: { publicUrl } } = supabase.storage.from('blog-media').getPublicUrl(path);
-      editor?.chain().focus().setImage({ src: publicUrl }).insertContent('<p></p>').run();
-    };
-    input.click();
-  }, [editor, onError]);
-
-  const addYoutube = useCallback(() => {
-    const url = prompt('Enter a YouTube URL:');
-    if (url && editor) {
-      editor.chain().focus().setYoutubeVideo({ src: url }).insertContent('<p></p>').run();
-    }
-  }, [editor]);
-
-  const addLink = useCallback(() => {
-    if (!editor) return;
-    const previousUrl = editor.getAttributes('link').href;
-    const url = prompt('URL:', previousUrl);
-    
-    if (url === null) return; 
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-    
-    const { from, to } = editor.state.selection;
-    if (from === to) {
-      editor.chain().focus().insertContent(`<a href="${url}">${url}</a> `).run();
-    } else {
-      editor.chain().focus().setLink({ href: url }).run();
-    }
-  }, [editor]);
-
   const addDiceRoll = useCallback(() => {
     const roll = Math.floor(Math.random() * 20) + 1;
-    const rollType = roll === 20 ? ' *(Critical Success!)*' : roll === 1 ? ' *(Critical Fail!)*' : '';
-    editor?.chain().focus().insertContent(`<p>🎲 <strong>Author's Roll (1d20)</strong>: ${roll}${rollType}</p>`).run();
+    const rollType = roll === 20 ? ' <em>(Critical Success!)</em>' : roll === 1 ? ' <em>(Critical Fail!)</em>' : '';
+    if (editor) {
+      const { to } = editor.state.selection;
+      editor.chain().focus().setTextSelection(to).insertContent(`<p>🎲 <strong>Author's Roll (1d20)</strong>: ${roll}${rollType}</p>`).run();
+    }
   }, [editor]);
 
   if (!editor) return null;
 
   return (
     <div className="border border-[#6e552f] overflow-hidden flex flex-col">
-      {/* Upper Toolbar */}
       <div className="flex items-center gap-1 flex-wrap bg-[#14100d] px-2 py-1.5 border-b border-[#6e552f]">
         <ToolbarBtn icon={<Bold className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold" />
         <ToolbarBtn icon={<Italic className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic" />
         <ToolbarBtn icon={<Heading2 className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading" />
         <ToolbarBtn icon={<Quote className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Quote" />
-        
+
         <div className="w-px h-5 bg-[#6e552f]/50 mx-1" />
-        
+
         <ToolbarBtn icon={<List className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet List" />
         <ToolbarBtn icon={<ListOrdered className="w-4 h-4"/>} onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered List" />
-        
-        <div className="w-px h-5 bg-[#6e552f]/50 mx-1" />
-        
-        <ToolbarBtn icon={<Link2 className="w-4 h-4"/>} onClick={addLink} active={editor.isActive('link')} title="Add Link" />
-        <ToolbarBtn icon={<ImageIcon className="w-4 h-4"/>} onClick={addImage} active={false} title="Upload Image (Max 10MB)" />
-        <ToolbarBtn icon={<Film className="w-4 h-4"/>} onClick={addYoutube} active={false} title="Embed YouTube Video" />
 
         <div className="w-px h-5 bg-[#6e552f]/50 mx-1" />
 
-        {/* Spacing Controls */}
-        <select 
+        <select
           onChange={(e) => {
             if (!e.target.value) return;
             editor.chain().focus().updateAttributes('paragraph', { lineHeight: e.target.value }).updateAttributes('heading', { lineHeight: e.target.value }).run();
-            e.target.value = ''; 
+            e.target.value = '';
           }}
           className="bg-[#0b0908] text-[#c8aa6e] border border-[#6e552f] text-[10px] uppercase tracking-widest p-1 focus:outline-none cursor-pointer"
           title="Adjust Line Spacing"
@@ -182,8 +119,8 @@ export function RichTextEditor({ content, onChange, onError }: RichTextEditorPro
           <option value="1.75">Normal</option>
           <option value="2.5">Relaxed</option>
         </select>
-        
-        <select 
+
+        <select
           onChange={(e) => {
             if (!e.target.value) return;
             editor.chain().focus().updateAttributes('paragraph', { letterSpacing: e.target.value }).updateAttributes('heading', { letterSpacing: e.target.value }).run();

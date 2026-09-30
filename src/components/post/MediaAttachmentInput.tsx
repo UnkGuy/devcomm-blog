@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, Image as ImageIcon, Film, ExternalLink, X, CheckCircle2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, ExternalLink, X, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { parseMediaUrl } from '@/lib/utils';
 
@@ -35,8 +35,8 @@ export function MediaAttachmentInput({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      onError('Image must be under the 5MB storage limit.');
+    if (file.size > 10 * 1024 * 1024) {
+      onError('Image must be under the 10MB storage limit.');
       return;
     }
 
@@ -53,7 +53,7 @@ export function MediaAttachmentInput({
     }
 
     const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-    const primaryPath = `${user.id}/scroll-${Date.now()}.${ext}`;
+    const primaryPath = `${user.id}/cover-${Date.now()}.${ext}`;
     const fallbackPath = `posts/${user.id}-${Date.now()}.${ext}`;
 
     let finalPath = primaryPath;
@@ -88,7 +88,7 @@ export function MediaAttachmentInput({
     <div className="space-y-2 bg-[#0b0908]/90 p-3.5 border border-[#6e552f]/70">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <label className="font-display text-xs uppercase tracking-widest font-semibold text-[#c8aa6e]">
-          Featured Illustration, Video, or Link (Optional)
+          Featured Cover Art (Optional)
         </label>
 
         {parsed.type !== 'none' && (
@@ -96,19 +96,13 @@ export function MediaAttachmentInput({
             {parsed.type === 'image' && (
               <>
                 <ImageIcon className="w-3 h-3" />
-                <span>Illustration Detected</span>
-              </>
-            )}
-            {(parsed.type === 'youtube' || parsed.type === 'video') && (
-              <>
-                <Film className="w-3 h-3" />
-                <span>Scrying Vision (Video)</span>
+                <span>Illustration Attached</span>
               </>
             )}
             {parsed.type === 'link' && (
               <>
                 <ExternalLink className="w-3 h-3" />
-                <span>Web Link ({parsed.hostname})</span>
+                <span>Web Link Attached</span>
               </>
             )}
           </span>
@@ -118,7 +112,7 @@ export function MediaAttachmentInput({
       <div className="flex flex-col sm:flex-row gap-2">
         <label className="font-display text-xs uppercase tracking-wider text-[#e8cf96] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#2c2012] border border-[#c8aa6e] hover:bg-[#3d2c19] cursor-pointer shrink-0 transition-colors">
           <Upload className="w-3.5 h-3.5" />
-          <span>{uploading ? 'Uploading...' : 'Upload Image'}</span>
+          <span>{uploading ? 'Uploading...' : 'Upload Cover Image'}</span>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
@@ -133,7 +127,7 @@ export function MediaAttachmentInput({
             <div className="w-full pl-3 pr-3 py-2 bg-[#14100d] border border-[#6e552f] flex items-center justify-between">
               <span className="text-sm text-[#86efac] flex items-center gap-1.5 font-medium truncate">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span className="truncate">Media Successfully Attached</span>
+                <span className="truncate">Cover Successfully Attached</span>
               </span>
               <button
                 type="button"
@@ -150,7 +144,7 @@ export function MediaAttachmentInput({
               type="text"
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              placeholder="Or paste any Image URL, YouTube link, or web URL..."
+              placeholder="Or paste an Image URL for the cover..."
               className="w-full pl-3 pr-3 py-2 bg-[#14100d] border border-[#6e552f] text-sm text-[#f3e5c8] placeholder:text-[#786852] focus:outline-none focus:border-[#c8aa6e]"
             />
           )}
@@ -158,7 +152,7 @@ export function MediaAttachmentInput({
       </div>
 
       <p className="text-[11px] text-[#8c7b65]">
-        Upload a portrait/illustration (max 5MB) or paste any URL—links inside your lore text below also format automatically.
+        Upload a file (max 10MB) or paste a link. If blank, the archive uses the first image in your lore text.
       </p>
     </div>
   );

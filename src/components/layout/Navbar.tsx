@@ -30,7 +30,7 @@ export default async function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#6e552f] bg-[#0e0b09]/95 backdrop-blur-sm">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-3 shrink-0">
           <WaxSeal size={36} />
           <div className="whitespace-nowrap">
@@ -65,15 +65,14 @@ export default async function Navbar() {
                 </Link>
               )}
                 <Link
-  href={`/scribe/${encodeURIComponent(
-    profile?.username || user.email?.split('@')[0] || 'Adventurer'
-  )}`}
-  className="font-display text-xs uppercase tracking-wider text-[#d4c3a3] hover:text-[#e8cf96] hover:bg-[#1c150e] px-2.5 py-1.5 border border-transparent hover:border-[#6e552f]/60 transition-colors hidden sm:flex items-center gap-1.5 whitespace-nowrap"
-  title="View Your Personal Noticeboard & Scroll History"
->
-  <span>My Ledger</span>
-</Link>
-
+                  href={`/scribe/${encodeURIComponent(
+                    profile?.username || user.email?.split('@')[0] || 'Adventurer'
+                  )}`}
+                  className="font-display text-xs uppercase tracking-wider text-[#d4c3a3] hover:text-[#e8cf96] hover:bg-[#1c150e] px-2.5 py-1.5 border border-transparent hover:border-[#6e552f]/60 transition-colors hidden sm:flex items-center gap-1.5 whitespace-nowrap"
+                  title="View Your Personal Noticeboard & Scroll History"
+                >
+                  <span>My Ledger</span>
+                </Link>
 
               <Link
                 href="/create"
@@ -83,7 +82,6 @@ export default async function Navbar() {
                 <span>Scribe Scroll</span>
               </Link>
 
-              {/* In-Place Profile Editor Modal Trigger */}
               <ProfileModal
                 userId={user.id}
                 initialUsername={profile?.username || user.email?.split('@')[0] || 'Adventurer'}
