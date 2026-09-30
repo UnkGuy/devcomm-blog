@@ -25,7 +25,7 @@ export default function AboutPage() {
             As both a developer and a D&amp;D player, I was tired of generic, ultra-modern social platforms. I wanted a digital tavern—a Noticeboard where adventurers could pin quest logs, share lore, and debate rules without feeling like they were stuck in a sterile corporate app.
           </p>
           <p>
-Built entirely from the ground up without generic templates, this archive relies on custom-forged obsidian panels and deterministic parchment layouts to recreate the authentic, tactile weight of a physical campaign diary.          </p>
+            Built entirely from the ground up without generic templates, this archive relies on custom-forged obsidian panels and deterministic parchment layouts to recreate the authentic, tactile weight of a physical campaign diary.          </p>
           <p className="italic text-[#e8cf96] pt-4 border-t border-[#6e552f]/40">
             "We are all scribes of our own campaigns. This archive simply gives those stories a permanent home."
           </p>
