@@ -53,24 +53,24 @@ export function GoldDivider({
 }: GoldDividerProps) {
   if (variant === 'parchment') {
     return (
-      <div className={cn('my-5 flex justify-center select-none', className)}>
+      <div className={cn('my-6 flex justify-center select-none', className)}>
         <img
           src="/assets/images/parchment-divider.png"
           alt=""
           aria-hidden="true"
-          className="h-14 sm:h-20 w-full max-w-lg object-contain mix-blend-multiply opacity-90"
+          className="h-20 sm:h-28 w-full max-w-3xl object-contain mix-blend-multiply opacity-90"
         />
       </div>
     );
   }
 
   return (
-    <div className={cn('my-4 flex justify-center select-none', className)}>
+    <div className={cn('my-6 flex justify-center select-none', className)}>
       <img
         src="/assets/images/divider-gold.png"
         alt=""
         aria-hidden="true"
-        className="h-11 sm:h-16 w-full max-w-lg object-contain mix-blend-screen opacity-95"
+        className="h-16 sm:h-24 w-full max-w-3xl object-contain mix-blend-screen opacity-95"
       />
     </div>
   );

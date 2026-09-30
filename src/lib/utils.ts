@@ -25,17 +25,22 @@ export function formatRelativeDate(dateString: string): string {
   });
 }
 
-// Deterministically picks between parchment.jpg and parchment2.jpg based on post ID
-export function getParchmentClass(seed: string): string {
+// --- OPTIMIZATION 1: Centralized Hashing Helper ---
+/** Generates a deterministic integer from any string seed */
+function getHashFromSeed(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash |= 0;
+    hash |= 0; // Convert to 32bit integer
   }
-  return Math.abs(hash) % 2 === 0 ? 'parchment-scroll' : 'parchment-scroll-alt';
+  return Math.abs(hash);
 }
 
-// All 5 Wax Seal variants in public/assets/images/
+// Deterministically picks between parchment.jpg and parchment2.jpg based on post ID
+export function getParchmentClass(seed: string): string {
+  return getHashFromSeed(seed) % 2 === 0 ? 'parchment-scroll' : 'parchment-scroll-alt';
+}
+
 export const WAX_SEAL_IMAGES = [
   '/assets/images/wax-seal-red.png',
   '/assets/images/wax-seal-blue.png',
@@ -48,158 +53,10 @@ export function getWaxSealImage(seed?: string): string {
   if (!seed) {
     return WAX_SEAL_IMAGES[Math.floor(Math.random() * WAX_SEAL_IMAGES.length)];
   }
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  return WAX_SEAL_IMAGES[Math.abs(hash) % WAX_SEAL_IMAGES.length];
+  return WAX_SEAL_IMAGES[getHashFromSeed(seed) % WAX_SEAL_IMAGES.length];
 }
 
-export function normalizeUrl(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return '';
-  if (/^www\./i.test(trimmed)) {
-    return `https://${trimmed}`;
-  }
-  return trimmed;
-}
-
-export function getUrlHostname(url: string): string {
-  try {
-    const parsed = new URL(normalizeUrl(url));
-    return parsed.hostname.replace(/^www\./i, '');
-  } catch {
-    return url;
-  }
-}
-
-// Detects whether a URL is an image, a YouTube video, a direct video, or a general web link
-export function parseMediaUrl(url?: string | null): {
-  type: 'none' | 'image' | 'youtube' | 'video' | 'link';
-  embedUrl: string | null;
-  hostname?: string;
-} {
-  if (!url || !url.trim()) return { type: 'none', embedUrl: null };
-  const trimmed = normalizeUrl(url);
-
-  // 1. Check YouTube URLs (watch, embed, shorts, youtu.be)
-  const ytMatch = trimmed.match(
-    /(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i
-  );
-  if (ytMatch && ytMatch[1]) {
-    return {
-      type: 'youtube',
-      embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}`,
-      hostname: 'youtube.com',
-    };
-  }
-
-  // 2. Check direct video extensions
-  if (/\.(mp4|webm|ogg|mov)(\?.*|#.*)?$/i.test(trimmed)) {
-    return {
-      type: 'video',
-      embedUrl: trimmed,
-      hostname: getUrlHostname(trimmed),
-    };
-  }
-
-  // 3. Check image extensions, data URIs, Supabase blog-media bucket, or common image CDNs
-  const isImage =
-    /^data:image\//i.test(trimmed) ||
-    /\.(jpe?g|png|gif|webp|svg|avif|bmp)(\?.*|#.*)?$/i.test(trimmed) ||
-    trimmed.includes('/storage/v1/object/public/blog-media/') ||
-    /(images\.unsplash\.com|i\.imgur\.com|cdn\.discordapp\.com|media\.giphy\.com|pbs\.twimg\.com)/i.test(
-      trimmed
-    );
-
-  if (isImage) {
-    return {
-      type: 'image',
-      embedUrl: trimmed,
-      hostname: getUrlHostname(trimmed),
-    };
-  }
-
-  // 4. Check general HTTP/HTTPS web link
-  if (/^https?:\/\//i.test(trimmed)) {
-    return {
-      type: 'link',
-      embedUrl: trimmed,
-      hostname: getUrlHostname(trimmed),
-    };
-  }
-
-  return { type: 'none', embedUrl: null };
-}
-
-// Extracts the first standalone media/link URL from markdown if cover_image_url wasn't manually set
-export function extractFirstMediaUrl(markdown: string): string | null {
-  if (!markdown) return null;
-  const mdImageMatch = markdown.match(/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/i);
-  if (mdImageMatch?.[1]) return mdImageMatch[1];
-
-  const urlRegex = /\b((?:https?:\/\/|www\.)[^\s<>()]+)\b/gi;
-  let match: RegExpExecArray | null;
-  while ((match = urlRegex.exec(markdown)) !== null) {
-    const candidate = normalizeUrl(match[1].replace(/[.,!?;:]+$/, ''));
-    const parsed = parseMediaUrl(candidate);
-    if (parsed.type === 'image' || parsed.type === 'youtube' || parsed.type === 'video') {
-      return candidate;
-    }
-  }
-  return null;
-}
-
-// Pre-processes Markdown so bare URLs auto-format into links or media embeds
-export function formatMarkdownWithAutoLinks(markdown: string): string {
-  if (!markdown.trim()) return '';
-
-  const lines = markdown.split('\n');
-  let inCodeBlock = false;
-
-  const processedLines = lines.map((line) => {
-    const trimmedLine = line.trim();
-
-    if (trimmedLine.startsWith('```')) {
-      inCodeBlock = !inCodeBlock;
-      return line;
-    }
-    if (inCodeBlock) return line;
-
-    // If a line is solely a bare URL, auto-format based on its media type
-    if (/^(https?:\/\/|www\.)\S+$/i.test(trimmedLine)) {
-      const cleanUrl = normalizeUrl(trimmedLine);
-      const parsed = parseMediaUrl(cleanUrl);
-
-      if (parsed.type === 'image' && parsed.embedUrl) {
-        return `![Scroll Illustration](${parsed.embedUrl})`;
-      }
-      if (parsed.type === 'youtube' && parsed.embedUrl) {
-        return `<div class="my-4 fantasy-media-frame"><div class="aspect-video w-full"><iframe src="${parsed.embedUrl}" class="w-full h-full" allowfullscreen title="Scrying Vision"></iframe></div></div>`;
-      }
-      if (parsed.type === 'video' && parsed.embedUrl) {
-        return `<div class="my-4 fantasy-media-frame"><video src="${parsed.embedUrl}" controls class="w-full max-h-[420px] bg-black"></video></div>`;
-      }
-      return `[${ cleanUrl }](${cleanUrl})`;
-    }
-
-    // Otherwise, convert inline bare URLs (not already inside Markdown [text](url), <...>, or attributes)
-    return line.replace(
-      /(^|[\s(>])((?:https?:\/\/|www\.)[^\s<)"']+)/gi,
-      (fullMatch, prefix: string, rawUrl: string) => {
-        const cleanUrl = rawUrl.replace(/[.,!?;:]+$/, '');
-        const trailingPunct = rawUrl.slice(cleanUrl.length);
-        const href = normalizeUrl(cleanUrl);
-        return `${prefix}[${cleanUrl}](${href})${trailingPunct}`;
-      }
-    );
-  });
-
-  return processedLines.join('\n');
-}
-
-// 8 Built-In D&D Class Crest Avatars (SVG Data URIs so they never break)
+// 8 Built-In D&D Class Crest Avatars (SVG Data URIs)
 function createClassSvg(label: string, symbol: string, bg: string, border: string) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <rect width="100" height="100" rx="50" fill="${bg}"/>
@@ -227,37 +84,110 @@ export const DND_AVATAR_PRESETS = [
 
 export function getAvatarFallback(seed?: string): string {
   const source = (seed || 'Scribe').trim() || 'Scribe';
-  let hash = 0;
+  return DND_AVATAR_PRESETS[getHashFromSeed(source) % DND_AVATAR_PRESETS.length].url;
+}
 
-  for (let i = 0; i < source.length; i++) {
-    hash = (hash << 5) - hash + source.charCodeAt(i);
-    hash |= 0;
+export function normalizeUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  return /^www\./i.test(trimmed) ? `https://${trimmed}` : trimmed;
+}
+
+export function getUrlHostname(url: string): string {
+  try {
+    return new URL(normalizeUrl(url)).hostname.replace(/^www\./i, '');
+  } catch {
+    return url;
+  }
+}
+
+// Detects whether a URL is an image, a YouTube video, a direct video, or a general web link
+export function parseMediaUrl(url?: string | null): {
+  type: 'none' | 'image' | 'youtube' | 'video' | 'link';
+  embedUrl: string | null;
+  hostname?: string;
+} {
+  if (!url || !url.trim()) return { type: 'none', embedUrl: null };
+  const trimmed = normalizeUrl(url);
+
+  const ytMatch = trimmed.match(YT_REGEX);
+  if (ytMatch && ytMatch[1]) {
+    return {
+      type: 'youtube',
+      embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}`,
+      hostname: 'youtube.com',
+    };
   }
 
-  return DND_AVATAR_PRESETS[Math.abs(hash) % DND_AVATAR_PRESETS.length].url;
+  if (/\.(mp4|webm|ogg|mov)(\?.*|#.*)?$/i.test(trimmed)) {
+    return { type: 'video', embedUrl: trimmed, hostname: getUrlHostname(trimmed) };
+  }
+
+  const isImage =
+    /^data:image\//i.test(trimmed) ||
+    IMAGE_EXT_REGEX.test(trimmed) ||
+    trimmed.includes('/storage/v1/object/public/blog-media/') ||
+    /(images\.unsplash\.com|i\.imgur\.com|cdn\.discordapp\.com|media\.giphy\.com|pbs\.twimg\.com)/i.test(trimmed);
+
+  if (isImage) {
+    return { type: 'image', embedUrl: trimmed, hostname: getUrlHostname(trimmed) };
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return { type: 'link', embedUrl: trimmed, hostname: getUrlHostname(trimmed) };
+  }
+
+  return { type: 'none', embedUrl: null };
 }
+
+// Extracts the first standalone media/link URL from HTML/Markdown
+export function extractFirstMediaUrl(content: string): string | null {
+  if (!content) return null;
+  
+  // Try to find a markdown image first (legacy support)
+  const mdImageMatch = content.match(/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/i);
+  if (mdImageMatch?.[1]) return mdImageMatch[1];
+
+  // Then try to find raw URLs
+  const urlRegex = /\b((?:https?:\/\/|www\.)[^\s<>()"']+)\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = urlRegex.exec(content)) !== null) {
+    const candidate = normalizeUrl(match[1].replace(/[.,!?;:]+$/, ''));
+    const parsed = parseMediaUrl(candidate);
+    if (parsed.type === 'image' || parsed.type === 'youtube' || parsed.type === 'video') {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+// --- OPTIMIZATION 2: Pre-compiled Regexes ---
+const YT_REGEX = /(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i;
+const IMAGE_EXT_REGEX = /\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i;
+const HTML_ANCHOR_REGEX = /<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+
 export function processHtmlAutoLinks(html: string): string {
   if (!html) return '';
-  // TipTap wraps pasted URLs in an <a> tag automatically. We intercept it!
-  const anchorRegex = /<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
   
-  return html.replace(anchorRegex, (match, href, innerText) => {
+  return html.replace(HTML_ANCHOR_REGEX, (match, href, innerText) => {
     // Only embed if the link text is the raw URL itself
-    const isRawLink = innerText.trim() === href.trim();
-    if (!isRawLink) return match;
+    if (innerText.trim() !== href.trim()) return match;
 
     let finalSrc = href;
-    if (/\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i.test(href) || href.includes('imgur.com')) {
+    const isImageExt = IMAGE_EXT_REGEX.test(href);
+    const isImgur = href.includes('imgur.com');
+
+    if (isImageExt || isImgur) {
        // Auto-append .jpg if they pasted a raw imgur link without the extension
-       if (href.includes('imgur.com') && !/\.(jpe?g|png|gif|webp|svg)$/i.test(href)) {
+       if (isImgur && !isImageExt) {
            finalSrc = href + '.jpg';
        }
-       return `<div class="fantasy-media-frame my-4 overflow-hidden cursor-zoom-in"><img src="${finalSrc}" class="w-full max-h-[460px] object-cover fantasy-media-img" alt="Embedded Auto Image" /></div>`;
+       return `<span class="fantasy-media-frame my-4 overflow-hidden cursor-zoom-in block"><img src="${finalSrc}" class="w-full max-h-[460px] object-cover fantasy-media-img block" alt="Embedded Auto Image" /></span>`;
     }
 
-    const ytMatch = href.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+    const ytMatch = href.match(YT_REGEX);
     if (ytMatch && ytMatch[1]) {
-       return `<div class="fantasy-media-frame my-4"><div class="aspect-video w-full"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe></div></div>`;
+       return `<span class="fantasy-media-frame my-4 block"><span class="aspect-video w-full block"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full block" allowfullscreen></iframe></span></span>`;
     }
 
     return match;

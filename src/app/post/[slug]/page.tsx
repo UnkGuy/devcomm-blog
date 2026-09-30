@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { UserPopover } from '@/components/user/UserPopover';
 import Link from 'next/link';
-import { marked } from 'marked';
 import { ArrowLeft, Calendar, Trash2, ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { deletePostAction } from '@/lib/actions/post.actions';
@@ -10,7 +9,7 @@ import {
   formatRelativeDate,
   getParchmentClass,
   parseMediaUrl,
-  formatMarkdownWithAutoLinks,
+  processHtmlAutoLinks, // Added
   DND_AVATAR_PRESETS,
 } from '@/lib/utils';
 import { Badge, GoldDivider, WaxSeal } from '@/components/ui/Badge';
@@ -109,17 +108,11 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
   const parchmentClass = getParchmentClass(post.id);
   const media = parseMediaUrl(post.cover_image_url);
 
-  const safeMarkdown = formatMarkdownWithAutoLinks(
-    post.description.replace(
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      ''
-    )
-  );
-  const htmlContent = marked.parse(safeMarkdown, {
-    async: false,
-    gfm: true,
-    breaks: true,
-  }) as string;
+  const cleanDescription = post.description.replace(
+  /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+  ''
+);
+const htmlContent = processHtmlAutoLinks(cleanDescription);
 
   async function handleDeletePost() {
     'use server';
